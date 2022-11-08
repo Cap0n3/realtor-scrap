@@ -1,0 +1,52 @@
+# == MAC OS FILES == #
+.DS_Store
+
+# == VIRTUAL ENV & PYENV == #
+myEnv/
+.python-version
+
+# testing
+/coverage
+
+# production
+/build
+
+# == VISUAL CODE FILES == #
+**/.vscode/
+*.code-workspace
+.history
+
+# == DJANGO == #
+**/db.sqlite3
+db.sqlite3
+**/__pycache__
+__pycache__
+logs/
+*.log
+*.bak
+
+# === MEDIA FILES === #
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.pdf
+*.mov
+*.mp3
+*.mp4
+
+# Env variable
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# == MISC == #
+/misc
+/driver
+/savedResults
+*.pickle
+pass.txt
+*.html
+*.txt
