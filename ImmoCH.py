@@ -5,16 +5,14 @@ import re
 from utils.logUtil import logger
 import pickle
 from datetime import datetime
+from abc import ABC, abstractmethod
 
-class BaseImmoCH:
-    def __init__(self, itemToSearch):
-        self.URLs = {
-            "website" : "https://www.immobilier.ch",
-            "flats" : { "mainURL" : "https://www.immobilier.ch/fr/carte/louer/appartement-maison/geneve/", "params" : "?t=rent&c=1;2&p=s40&nb=false&gr=1"},
-            "industrial" : { "mainURL" : "https://www.immobilier.ch/fr/carte/louer/industriel/geneve/", "params" : "?t=rent&c=7&p=s40&nb=false&gr=2"},
-            "commercial" : { "mainURL" : "https://www.immobilier.ch/fr/carte/louer/commercial/geneve/", "params" : "?t=rent&c=4&p=s40&nb=false"}
-        }
-        self.itemToSearch = itemToSearch
+class RealtorScrap(ABC):
+    def __init__(self, itemCategory):
+        """
+        Item category can be either "flat", "industrial", "commercial" or "office".
+        """
+        self.itemCategory = itemCategory
 
     def getPageSoup(self, _url):
         """
@@ -39,6 +37,40 @@ class BaseImmoCH:
             logger.info(f"Succssfully connected to {_url}")
             # Return page's soup
             return BeautifulSoup(response.content, "html.parser")
+        
+    @abstractmethod
+    def getNumberOfPages(self):
+        """
+        Find total number of pages in any given search.
+        """
+        pass
+    
+    @abstractmethod
+    def getAds(self):
+        """
+        This method should be in charge of extracting ads informations in any given page's soup. Those informations should not be 
+        too refined (yet) and be populated in a dictionnay which in turn will be placed in a list of dictionnaries.
+        """
+        pass
+    
+    @abstractmethod
+    def searchPages(self):
+        """
+        It should be the main method of children classes. It defines all necessary URLs for 'flat', 'industrial', 'commercial' and 'office' and
+        then extract individual pages thanks to `getNumberOfPages()` and `getPageSoup()` in a loop to go through all pages in search. 
+        Finally, it sends individual page's soup to getAds() to extract all page's ads and place them in a list.
+        """
+        pass
+
+class ImmoCH(RealtorScrap):
+    def __init__(self, itemCategory):
+        self.URLs = {
+            "website" : "https://www.immobilier.ch",
+            "flats" : { "mainURL" : "https://www.immobilier.ch/fr/carte/louer/appartement-maison/geneve/", "params" : "?t=rent&c=1;2&p=s40&nb=false&gr=1"},
+            "industrial" : { "mainURL" : "https://www.immobilier.ch/fr/carte/louer/industriel/geneve/", "params" : "?t=rent&c=7&p=s40&nb=false&gr=2"},
+            "commercial" : { "mainURL" : "https://www.immobilier.ch/fr/carte/louer/commercial/geneve/", "params" : "?t=rent&c=4&p=s40&nb=false"}
+        }
+        super().__init__(itemCategory)
     
     def getNumberOfPages(self, _soup):
         """
@@ -139,13 +171,13 @@ class BaseImmoCH:
             List of lists containing dictionnaries representing ads. Each nested list is a page and dictionnaries inside are individual ad.
         """
         # Define type of search and create associated URL
-        if self.itemToSearch == "flat":
+        if self.itemCategory == "flat":
             baseURL = self.URLs["flats"]["mainURL"]
             params = self.URLs["flats"]["params"]
-        elif self.itemToSearch == "industrial":
+        elif self.itemCategory == "industrial":
             baseURL = self.URLs["industrial"]["mainURL"]
             params = self.URLs["industrial"]["params"]
-        elif self.itemToSearch == "commercial":
+        elif self.itemCategory == "commercial":
             baseURL = self.URLs["commercial"]["mainURL"]
             params = self.URLs["commercial"]["params"]
         else:
@@ -176,5 +208,5 @@ class BaseImmoCH:
 # =========================== #
 # ====== QUICK TESTING ====== #
 # =========================== #
-obj = BaseImmoCH("flat")
+obj = ImmoCH("flat")
 obj.searchPages(1)
