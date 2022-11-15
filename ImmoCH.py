@@ -57,8 +57,18 @@ class RealtorScrap(ABC):
     def searchPages(self):
         """
         It should be the main method of children classes. It defines all necessary URLs for 'flat', 'industrial', 'commercial' and 'office' and
-        then extract individual pages thanks to `getNumberOfPages()` and `getPageSoup()` in a loop to go through all pages in search. 
+        then extract individual ads pages thanks to `getNumberOfPages()` and `getPageSoup()` in a loop to go through all pages in search. 
         Finally, it sends individual page's soup to getAds() to extract all page's ads and place them in a list.
+        """
+        pass
+    
+    @abstractmethod
+    def getItems(self):
+        """
+        This method is responsible for sorting the data according to user-defined filters and the total number of pages to be searched.
+        It would call searchPages() method, retrieve list containing all unrefined and unfiltered assets and extract all relevant infos
+        from ad soup. This method should contain nested functions that will extract information in a specific manner according to the
+        type of informations that should be extracted (flat, industrial, commercial, office).
         """
         pass
 
@@ -100,9 +110,9 @@ class ImmoCH(RealtorScrap):
 
     def getAds(self, _soup):
         """
-        Extract ad main elements, basically it'll extract ad data-id and link along with its two main elements 
-        `filter-content` and `filter-item-characteristic` soup that contains all important data concerning the good 
-        (no matter if it's flat, industrial or commercial).
+        Extract ad main elements, basically it'll extract ad `data-id` and `link` along with its three main elements 
+        `filter-content`, `filter-item-characteristic` and item `container` div soup that contains all important data concerning 
+        the good (no matter if it's flat, industrial or commercial).
         
         Params
         ------
@@ -115,8 +125,9 @@ class ImmoCH(RealtorScrap):
             List containing dictionnaries (representing each ads) with keys :
                 <data-id> int : ID of ad
                 <link> str : Link of ad
-                <content-soup> class : Soup of `filter-content` tag
-                <character-soup> class : Soup of `filter-item-characteristic` tag
+                <ad-content-soup> class : Soup of `filter-content` tag (name, price, address, etc...)
+                <ad-character-soup> class : Soup of `filter-item-characteristic` tag (Size, rooms, etc...)
+                <item-page-soup> class : Soup of item's page `container` tag 
         """
         adsDictList = []
         # Get all individual ads in a list
@@ -124,7 +135,7 @@ class ImmoCH(RealtorScrap):
         # Extract container content
         for item in allAdItems:
             itemDict = {}
-            # Extract data-id from container
+            # == Extract data-id from container == #
             try:
                 dataID = item['data-id']
             except KeyError:
@@ -135,7 +146,7 @@ class ImmoCH(RealtorScrap):
                 logger.debug(f"Extracting item with data-id {dataID}")
             # Get ad container (item link and all infos about link)
             adContainer = item.find(class_="filter-item-container")
-            # Extract item link from container
+            # == Extract item link from container == #
             try:
                 link = adContainer.find(id=f"link-result-item-{dataID}")
             except KeyError:
@@ -146,10 +157,23 @@ class ImmoCH(RealtorScrap):
                     itemDict["link"] = self.URLs["website"] + link["href"]
             # Get ad content (name, price, address, etc...)
             adContent = adContainer.find(class_="filter-item-content")
-            itemDict["content-soup"] = adContent
+            itemDict["ad-content-soup"] = adContent
             # Get ad characteristics (Size, rooms, etc...)
             adCharacter = adContainer.find(class_="filter-item-characteristic")
-            itemDict["character-soup"] = adCharacter
+            itemDict["ad-character-soup"] = adCharacter
+            # == Go to page and scrap item full page == #
+            if link != None:
+                logger.debug(f"Trying connection to item's page at URL : {itemDict['link']}")
+                pageItemSoup = self.getPageSoup(itemDict["link"])
+                try:
+                    itemContainer = pageItemSoup.find(class_="container--large")
+                except Exception as e:
+                    logger.warn(f"Couldn't find item's container in item's page (item {dataID})")
+                else:
+                    itemDict["item-page-soup"] = itemContainer
+                    logger.info(f"Item page's soup successfully extracted for item with id {dataID}")
+            else:
+                logger.warn(f"Couldn't reach item's page, no link extracted for item with id {dataID}")
             # Push dictionnary in list
             adsDictList.append(itemDict)
             logger.debug(f"Added new dictionnary in list : {itemDict}")
@@ -170,7 +194,7 @@ class ImmoCH(RealtorScrap):
         pagesList : list
             List of lists containing dictionnaries representing ads. Each nested list is a page and dictionnaries inside are individual ad.
         """
-        # Define type of search and create associated URL
+        # == Define type of search and create associated URL == #
         if self.itemCategory == "flat":
             baseURL = self.URLs["flats"]["mainURL"]
             params = self.URLs["flats"]["params"]
@@ -189,7 +213,7 @@ class ImmoCH(RealtorScrap):
         soup = self.getPageSoup(firstPageURL)
         numberOfPages = self.getNumberOfPages(soup)
         logger.info(f"Total number of pages for search is {numberOfPages}")
-        # Establish connexion with all individual pages (loop)
+        # == Establish connexion with all individual pages (loop) == #
         if searchPages != None:
             # If user specified an exact number of page to search
             numberOfPages = searchPages
@@ -205,8 +229,21 @@ class ImmoCH(RealtorScrap):
             pagesList.append(adsList)
         return pagesList
 
+    def getItems(self, filter, totalPages=None):
+        # Get all ads pages soup
+        pagesSoup = self.searchPages(totalPages)
+        # What sub-method should be called
+        if self.itemCategory == "flat":
+            print("FLAT")
+        elif self.itemCategory == "industrial":
+            print("INDUS")
+        elif self.itemCategory == "commercial":
+            print("COMMERCIAL")
+        elif self.itemCategory == "office":
+            print("OFFICE")
+        
 # =========================== #
 # ====== QUICK TESTING ====== #
 # =========================== #
-obj = ImmoCH("flat")
+obj = ImmoCH("industrial")
 obj.searchPages(1)
