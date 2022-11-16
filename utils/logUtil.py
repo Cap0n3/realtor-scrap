@@ -25,5 +25,5 @@ stream_format = logging.Formatter('[%(asctime)s] [%(levelname)s] - %(message)s')
 file_format = logging.Formatter('[%(asctime)s] [%(levelname)s] %(name)s: #%(lineno)d - %(message)s')
 
 # Associer les formats au handlers
-stream_handler.setFormatter(stream_format)
+#stream_handler.setFormatter(stream_format)
 file_handler.setFormatter(file_format)

@@ -230,20 +230,64 @@ class ImmoCH(RealtorScrap):
         return pagesList
 
     def getItems(self, filter, totalPages=None):
-        # Get all ads pages soup
-        pagesSoup = self.searchPages(totalPages)
-        # What sub-method should be called
+        """
+        This method is responsible for sorting the data according to user-defined filters and the total number of pages to be searched.
+        Note : See abstract class docString for more infos.
+
+        Params
+        ------
+        filter : dict
+            Dictionnary with "minRent", "maxRent", "minSize", "maxSize", "minRooms" (only for flat search) and "maxRooms" (only for flat search) 
+            keys.
+        totalPages : int
+            Total number of page to seach on website.
+        """
+        # ================================== #
+        # ========= CORE FUNCTIONS ========= #
+        # ================================== #
+        def getRent(category, adData):
+            if category == "flat":
+                try:
+                    contentDiv = ad["ad-content-soup"].find(class_="filter-item-content")
+                except AttributeError:
+                    logger.warn(f"ad['ad-content-soup'] is equal to None ! Couldn't extract rent from item ID {ad['data-id']}")
+                else:
+                    if contentDiv != None:
+                        rawRent = re.sub("'", "", contentDiv.find(class_="title").get_text())
+                        logger.debug(re.search(r"CHF\s\d+\.-/mois", rawRent))
+                        
+
+        
+        # ======================== #
+        # ========= MAIN ========= #
+        # ======================== #
+        # If flat is selected, must also have rooms indicated
         if self.itemCategory == "flat":
-            print("FLAT")
-        elif self.itemCategory == "industrial":
-            print("INDUS")
-        elif self.itemCategory == "commercial":
-            print("COMMERCIAL")
-        elif self.itemCategory == "office":
-            print("OFFICE")
+            try:
+                filter["minRooms"] and filter["maxRooms"]
+            except KeyError:
+                print("ERROR : You must indicate 'minRooms' and 'maxRooms' for an appartement search.")
+                logger.error("User didn't indicate 'minRooms' and 'maxRooms' for an appartement search in filter dict. Stopped script.")
+        # Get all ads pages soup
+        allAdsList = self.searchPages(totalPages)
+        # === Main loop === #
+        for page in allAdsList:
+            for ad in page:
+                # == Get rent == #
+                rent = getRent(self.itemCategory, ad)
+
+        # == Get rent == #
         
 # =========================== #
 # ====== QUICK TESTING ====== #
 # =========================== #
-obj = ImmoCH("industrial")
-obj.searchPages(1)
+obj = ImmoCH("flat")
+filterParams = {
+    "minRent" : 1000,
+    "maxRent" : 1900,
+    "minSize" : 45,
+    "maxSize" : 80,
+    "minRooms" : 3.5,
+    "maxRooms" : 4
+}
+obj.getItems(filterParams, totalPages=1)
