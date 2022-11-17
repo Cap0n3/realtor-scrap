@@ -1,11 +1,15 @@
 from bs4 import BeautifulSoup
 import requests
+from pathlib import Path
 from requests.exceptions import HTTPError
 import re
 from utils.logUtil import logger
 import pickle
 from datetime import datetime
 from abc import ABC, abstractmethod
+
+
+CURR_PATH = Path(__file__).parent.absolute()
 
 class RealtorScrap(ABC):
     def __init__(self, itemCategory):
@@ -14,6 +18,41 @@ class RealtorScrap(ABC):
         """
         self.itemCategory = itemCategory
 
+    @staticmethod
+    def saveObject(obj, filePrefix):
+        """
+        Save object to a file for later analyse. Object saved is a dictionnary containing
+        saved object and a timestamp (datetime object), key names are `object` and `timestamp`.
+        """
+        savedDict = {}
+        # Save timestamp & object
+        savedDict["timeStamp"] = datetime.now()
+        savedDict["object"] = obj
+        # Check if folder exists & create if doesn't exist
+        folder = Path(f"{CURR_PATH}/savedResults")
+        if not folder.exists():
+            Path("savedResults").mkdir(parents=True, exist_ok=True)
+        # Save object & timeStamp
+        filename = f"savedResults/{filePrefix}_{datetime.now().strftime('%d-%m-%y_%H:%M:%S')}.search"
+        print(savedDict)
+        try:
+            with open(filename, "wb") as f:
+                pickle.dump(savedDict, f, protocol=pickle.HIGHEST_PROTOCOL)
+        except Exception as e:
+            print("Error during pickling object (Possibly unsupported):", e)
+    
+    @staticmethod
+    def loadObject(filename):
+        """
+        Load pickle object.
+        """
+        print(f"{CURR_PATH}/savedResults/{filename}")
+        try:
+            with open(f"{CURR_PATH}/savedResults/{filename}", "rb") as f:
+                return pickle.load(f)
+        except Exception as ex:
+            print("Error during unpickling object (Possibly unsupported):", ex)
+    
     def getPageSoup(self, _url):
         """
         Handle HTTP requests/response and get page's soup.
@@ -227,9 +266,12 @@ class ImmoCH(RealtorScrap):
             logger.info(f"<====== Extracted ads of page {pageNb} ======>")
             logger.debug(f"List of extracted ads dict : {adsList}")
             pagesList.append(adsList)
+        # ====== Save list ====== #
+        ImmoCH.saveObject(pagesList, "immoCH")
+        # ====== Return list ====== #
         return pagesList
 
-    def getItems(self, filter, totalPages=None):
+    def getItems(self, filter, totalPages=None, fileName=None):
         """
         This method is responsible for sorting the data according to user-defined filters and the total number of pages to be searched.
         Note : See abstract class docString for more infos.
@@ -241,6 +283,8 @@ class ImmoCH(RealtorScrap):
             keys.
         totalPages : int
             Total number of page to seach on website.
+        fileName : str
+            Give a `.search` file type to get and filter its content (files are automatically created after a search).
         """
         # ================================== #
         # ========= CORE FUNCTIONS ========= #
@@ -255,21 +299,32 @@ class ImmoCH(RealtorScrap):
                     if contentDiv != None:
                         rawRent = re.sub("'", "", contentDiv.find(class_="title").get_text())
                         logger.debug(re.search(r"CHF\s\d+\.-/mois", rawRent))
-                        
-
         
         # ======================== #
         # ========= MAIN ========= #
         # ======================== #
-        # If flat is selected, must also have rooms indicated
+        # === CHECK filter dict keys : If flat is selected, must also have rooms indicated === #
         if self.itemCategory == "flat":
             try:
                 filter["minRooms"] and filter["maxRooms"]
             except KeyError:
                 print("ERROR : You must indicate 'minRooms' and 'maxRooms' for an appartement search.")
                 logger.error("User didn't indicate 'minRooms' and 'maxRooms' for an appartement search in filter dict. Stopped script.")
-        # Get all ads pages soup
-        allAdsList = self.searchPages(totalPages)
+        
+        # === Lauch search OR load object from file === #
+        if fileName != None:            
+            # pathlist = Path(f"{CURR_PATH}/savedResults").glob('*')
+            # for path in pathlist:
+            #     if path.name == fileName:
+            #         loadedObj = ImmoCH.loadObject(path)
+            #         allAdsList = loadedObj.object
+            
+            loadedObj = ImmoCH.loadObject(fileName)
+            print(loadedObj)
+        else:
+            # If no file name is provided, just lauch a new search
+            allAdsList = self.searchPages(totalPages)
+        
         # === Main loop === #
         for page in allAdsList:
             for ad in page:
