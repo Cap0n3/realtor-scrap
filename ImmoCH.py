@@ -7,7 +7,13 @@ from utils.logUtil import logger
 import pickle
 from datetime import datetime
 from abc import ABC, abstractmethod
+import sys
 
+"""
+RecursionLimit : Necessary to pickle results because bs4 objects are huge and a recursion error will arise if let to default value 
+(which is 1000 recursions).
+"""
+sys.setrecursionlimit(20000)
 
 CURR_PATH = Path(__file__).parent.absolute()
 
@@ -313,14 +319,8 @@ class ImmoCH(RealtorScrap):
         
         # === Lauch search OR load object from file === #
         if fileName != None:            
-            # pathlist = Path(f"{CURR_PATH}/savedResults").glob('*')
-            # for path in pathlist:
-            #     if path.name == fileName:
-            #         loadedObj = ImmoCH.loadObject(path)
-            #         allAdsList = loadedObj.object
-            
             loadedObj = ImmoCH.loadObject(fileName)
-            print(loadedObj)
+            allAdsList = loadedObj["object"]
         else:
             # If no file name is provided, just lauch a new search
             allAdsList = self.searchPages(totalPages)
@@ -345,4 +345,4 @@ filterParams = {
     "minRooms" : 3.5,
     "maxRooms" : 4
 }
-obj.getItems(filterParams, totalPages=1)
+obj.getItems(filterParams, totalPages=1, fileName="immoCH_17-11-22_16:43:33.search")
