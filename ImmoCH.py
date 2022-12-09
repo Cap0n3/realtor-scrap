@@ -7,13 +7,6 @@ from utils.logUtil import logger
 import pickle
 from datetime import datetime
 from abc import ABC, abstractmethod
-import sys
-
-"""
-RecursionLimit : Necessary to pickle results because bs4 objects are huge and a recursion error will arise if let to default value 
-(which is 1000 recursions).
-"""
-sys.setrecursionlimit(20000)
 
 CURR_PATH = Path(__file__).parent.absolute()
 
@@ -114,6 +107,8 @@ class RealtorScrap(ABC):
         It would call searchPages() method, retrieve list containing all unrefined and unfiltered assets and extract all relevant infos
         from ad soup. This method should contain nested functions that will extract information in a specific manner according to the
         type of informations that should be extracted (flat, industrial, commercial, office).
+
+        Note : This method is the one that user will call to get filtered information about ads.
         """
         pass
 
@@ -185,7 +180,7 @@ class ImmoCH(RealtorScrap):
                 dataID = item['data-id']
             except KeyError:
                 itemDict["data-id"] = None
-                logger.warn(f"No data-id for item (KeyError) : {item}")
+                logger.warning(f"No data-id for item (KeyError) : {item}")
             else:
                 itemDict["data-id"] = int(dataID)
                 logger.debug(f"Extracting item with data-id {dataID}")
@@ -196,7 +191,7 @@ class ImmoCH(RealtorScrap):
                 link = adContainer.find(id=f"link-result-item-{dataID}")
             except KeyError:
                 itemDict["link"] = None
-                logger.warn(f"No link for item with data-id {dataID} : KeyError")
+                logger.warning(f"No link for item with data-id {dataID} : KeyError")
             else:
                 if link != None:
                     itemDict["link"] = self.URLs["website"] + link["href"]
@@ -213,12 +208,12 @@ class ImmoCH(RealtorScrap):
                 try:
                     itemContainer = pageItemSoup.find(class_="container--large")
                 except Exception as e:
-                    logger.warn(f"Couldn't find item's container in item's page (item {dataID})")
+                    logger.warning(f"Couldn't find item's container in item's page (item {dataID})")
                 else:
                     itemDict["item-page-soup"] = itemContainer
                     logger.info(f"Item page's soup successfully extracted for item with id {dataID}")
             else:
-                logger.warn(f"Couldn't reach item's page, no link extracted for item with id {dataID}")
+                logger.warning(f"Couldn't reach item's page, no link extracted for item with id {dataID}")
             # Push dictionnary in list
             adsDictList.append(itemDict)
             logger.debug(f"Added new dictionnary in list : {itemDict}")
@@ -268,16 +263,15 @@ class ImmoCH(RealtorScrap):
             logger.info(f"Get soup from URL : '{pageURL}'")
             pageSoup = self.getPageSoup(pageURL)
             # Extract individual ad infos
-            adsList= self.getAds(pageSoup)
+            adsList = self.getAds(pageSoup)
             logger.info(f"<====== Extracted ads of page {pageNb} ======>")
+            logger.info(f"Total ads extracted : {len(adsList)}")
             logger.debug(f"List of extracted ads dict : {adsList}")
             pagesList.append(adsList)
-        # ====== Save list ====== #
-        ImmoCH.saveObject(pagesList, "immoCH")
         # ====== Return list ====== #
         return pagesList
 
-    def getItems(self, filter, totalPages=None, fileName=None):
+    def getItems(self, filter, totalPages=None):
         """
         This method is responsible for sorting the data according to user-defined filters and the total number of pages to be searched.
         Note : See abstract class docString for more infos.
@@ -295,17 +289,48 @@ class ImmoCH(RealtorScrap):
         # ================================== #
         # ========= CORE FUNCTIONS ========= #
         # ================================== #
-        def getRent(category, adData):
+        def getFilteredRent(category, adData):
+            """
+            Extract matching rents and return them.
+            """
             if category == "flat":
                 try:
-                    contentDiv = ad["ad-content-soup"].find(class_="filter-item-content")
+                    contentDiv = adData["ad-content-soup"].find(class_="title")
                 except AttributeError:
-                    logger.warn(f"ad['ad-content-soup'] is equal to None ! Couldn't extract rent from item ID {ad['data-id']}")
+                    logger.warning(f"ad['ad-content-soup'] is equal to None ! Couldn't extract rent from item ID {ad['data-id']}")
                 else:
                     if contentDiv != None:
-                        rawRent = re.sub("'", "", contentDiv.find(class_="title").get_text())
-                        logger.debug(re.search(r"CHF\s\d+\.-/mois", rawRent))
+                        rawRent = re.sub("'", "", contentDiv.get_text())
+                        try:
+                            rent = int(re.search(r"\d+", rawRent).group())
+                        except AttributeError:
+                            logger.warning(f"Couldn't extract rent from item ID {ad['data-id']}")
+                        else:
+                            logger.debug(f"Extracted rent for item with ID {ad['data-id']}. Item rent : {rent} CHF")
+                            if rent >= filter["minRent"] and rent <= filter["maxRent"]:
+                                logger.debug(f"MATCH ! Rent of item {ad['data-id']} fit rent filter ! ({rent} CHF)")
+                                return rent
         
+        def getRooms(category, adData):
+            if category == "flat":
+                try:
+                    contentDiv = adData["ad-content-soup"].find(class_="object-type")
+                except AttributeError:
+                        logger.warning(f"ad['ad-content-soup'] is equal to None ! Couldn't extract rent from item ID {ad['data-id']}")
+                else:
+                    if contentDiv != None:
+                        rawRooms = contentDiv.get_text()
+                        try:
+                            rooms = float(re.search(r"\d+\.?\d?", rawRooms).group())
+                        except AttributeError:
+                            rooms = None
+                            logger.warning(f"Couldn't extract rooms from item ID {ad['data-id']}")
+                        else:
+                            logger.debug(f"Extracted rent for item with ID {ad['data-id']}. Item rooms : {rooms}")
+                            if rooms >= filter["minRooms"] and rooms <= filter["maxRooms"]:
+                                logger.debug(f"MATCH ! Rooms of item {ad['data-id']} fit room filter ! (rooms : {rooms})")
+                                return rooms
+
         # ======================== #
         # ========= MAIN ========= #
         # ======================== #
@@ -317,32 +342,29 @@ class ImmoCH(RealtorScrap):
                 print("ERROR : You must indicate 'minRooms' and 'maxRooms' for an appartement search.")
                 logger.error("User didn't indicate 'minRooms' and 'maxRooms' for an appartement search in filter dict. Stopped script.")
         
-        # === Lauch search OR load object from file === #
-        if fileName != None:            
-            loadedObj = ImmoCH.loadObject(fileName)
-            allAdsList = loadedObj["object"]
-        else:
-            # If no file name is provided, just lauch a new search
-            allAdsList = self.searchPages(totalPages)
+        # Get list of ads (Nested list, each list is a page)
+        allAdsList = self.searchPages(totalPages)
         
         # === Main loop === #
         for page in allAdsList:
             for ad in page:
                 # == Get rent == #
-                rent = getRent(self.itemCategory, ad)
-
-        # == Get rent == #
+                rent = getFilteredRent(self.itemCategory, ad)
+                # == Get rooms == #
+                address = getRooms(self.itemCategory, ad)
         
 # =========================== #
 # ====== QUICK TESTING ====== #
 # =========================== #
 obj = ImmoCH("flat")
 filterParams = {
-    "minRent" : 1000,
+    "minRent" : 500,
     "maxRent" : 1900,
     "minSize" : 45,
     "maxSize" : 80,
     "minRooms" : 3.5,
     "maxRooms" : 4
 }
-obj.getItems(filterParams, totalPages=1, fileName="immoCH_17-11-22_16:43:33.search")
+
+obj.getItems(filterParams, totalPages=1)
+

@@ -22,7 +22,7 @@ logger.setLevel(logging.DEBUG)
 #stream_format = logging.Formatter('[%(asctime)s] [%(levelname)s] - %(message)s')
 
 # Définir un autre format pour le fichier
-file_format = logging.Formatter('[%(asctime)s] [%(levelname)s] %(name)s: #%(lineno)d - %(message)s')
+file_format = logging.Formatter('[%(asctime)s] [%(levelname)s] {%(funcName)s} %(name)s: #%(lineno)d - %(message)s')
 
 # Associer les formats au handlers
 #stream_handler.setFormatter(stream_format)
