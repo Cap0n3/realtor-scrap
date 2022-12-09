@@ -10,6 +10,7 @@ from abc import ABC, abstractmethod
 
 CURR_PATH = Path(__file__).parent.absolute()
 
+
 class RealtorScrap(ABC):
     def __init__(self, itemCategory):
         """
@@ -39,7 +40,7 @@ class RealtorScrap(ABC):
                 pickle.dump(savedDict, f, protocol=pickle.HIGHEST_PROTOCOL)
         except Exception as e:
             print("Error during pickling object (Possibly unsupported):", e)
-    
+
     @staticmethod
     def loadObject(filename):
         """
@@ -51,7 +52,7 @@ class RealtorScrap(ABC):
                 return pickle.load(f)
         except Exception as ex:
             print("Error during unpickling object (Possibly unsupported):", ex)
-    
+
     def getPageSoup(self, _url):
         """
         Handle HTTP requests/response and get page's soup.
@@ -62,44 +63,46 @@ class RealtorScrap(ABC):
             URL of page.
         """
         # User-Agent to avoid being rejected by website
-        headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'}
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36"
+        }
         try:
             response = requests.get(_url, headers=headers)
             # If the response was successful, no Exception will be raised
             response.raise_for_status()
         except HTTPError as http_err:
-            logger.error(f"HTTP error occurred: {http_err}") # Python 3.6
+            logger.error(f"HTTP error occurred: {http_err}")  # Python 3.6
         except Exception as err:
-            logger.error(f"Other error occurred: {err}") # Python 3.6
+            logger.error(f"Other error occurred: {err}")  # Python 3.6
         else:
             logger.info(f"Succssfully connected to {_url}")
             # Return page's soup
             return BeautifulSoup(response.content, "html.parser")
-        
+
     @abstractmethod
     def getNumberOfPages(self):
         """
         Find total number of pages in any given search.
         """
         pass
-    
+
     @abstractmethod
     def getAds(self):
         """
-        This method should be in charge of extracting ads informations in any given page's soup. Those informations should not be 
+        This method should be in charge of extracting ads informations in any given page's soup. Those informations should not be
         too refined (yet) and be populated in a dictionnay which in turn will be placed in a list of dictionnaries.
         """
         pass
-    
+
     @abstractmethod
     def searchPages(self):
         """
         It should be the main method of children classes. It defines all necessary URLs for 'flat', 'industrial', 'commercial' and 'office' and
-        then extract individual ads pages thanks to `getNumberOfPages()` and `getPageSoup()` in a loop to go through all pages in search. 
+        then extract individual ads pages thanks to `getNumberOfPages()` and `getPageSoup()` in a loop to go through all pages in search.
         Finally, it sends individual page's soup to getAds() to extract all page's ads and place them in a list.
         """
         pass
-    
+
     @abstractmethod
     def getItems(self):
         """
@@ -112,16 +115,26 @@ class RealtorScrap(ABC):
         """
         pass
 
+
 class ImmoCH(RealtorScrap):
     def __init__(self, itemCategory):
         self.URLs = {
-            "website" : "https://www.immobilier.ch",
-            "flats" : { "mainURL" : "https://www.immobilier.ch/fr/carte/louer/appartement-maison/geneve/", "params" : "?t=rent&c=1;2&p=s40&nb=false&gr=1"},
-            "industrial" : { "mainURL" : "https://www.immobilier.ch/fr/carte/louer/industriel/geneve/", "params" : "?t=rent&c=7&p=s40&nb=false&gr=2"},
-            "commercial" : { "mainURL" : "https://www.immobilier.ch/fr/carte/louer/commercial/geneve/", "params" : "?t=rent&c=4&p=s40&nb=false"}
+            "website": "https://www.immobilier.ch",
+            "flats": {
+                "mainURL": "https://www.immobilier.ch/fr/carte/louer/appartement-maison/geneve/",
+                "params": "?t=rent&c=1;2&p=s40&nb=false&gr=1",
+            },
+            "industrial": {
+                "mainURL": "https://www.immobilier.ch/fr/carte/louer/industriel/geneve/",
+                "params": "?t=rent&c=7&p=s40&nb=false&gr=2",
+            },
+            "commercial": {
+                "mainURL": "https://www.immobilier.ch/fr/carte/louer/commercial/geneve/",
+                "params": "?t=rent&c=4&p=s40&nb=false",
+            },
         }
         super().__init__(itemCategory)
-    
+
     def getNumberOfPages(self, _soup):
         """
         Find total number of pages in any given immobilier.ch search.
@@ -141,7 +154,7 @@ class ImmoCH(RealtorScrap):
             paginationList = _soup.find("ul", "pages")
         except Exception as e:
             print(f"ERROR : Pagination not found on page ! Error message : {e}")
-        else:    
+        else:
             # Get list items
             liList = paginationList.find_all("li")
             # Get last list item (last page number)
@@ -150,10 +163,10 @@ class ImmoCH(RealtorScrap):
 
     def getAds(self, _soup):
         """
-        Extract ad main elements, basically it'll extract ad `data-id` and `link` along with its three main elements 
-        `filter-content`, `filter-item-characteristic` and item `container` div soup that contains all important data concerning 
+        Extract ad main elements, basically it'll extract ad `data-id` and `link` along with its three main elements
+        `filter-content`, `filter-item-characteristic` and item `container` div soup that contains all important data concerning
         the good (no matter if it's flat, industrial or commercial).
-        
+
         Params
         ------
         _soup : <class bs4>
@@ -167,7 +180,7 @@ class ImmoCH(RealtorScrap):
                 <link> str : Link of ad
                 <ad-content-soup> class : Soup of `filter-content` tag (name, price, address, etc...)
                 <ad-character-soup> class : Soup of `filter-item-characteristic` tag (Size, rooms, etc...)
-                <item-page-soup> class : Soup of item's page `container` tag 
+                <item-page-soup> class : Soup of item's page `container` tag
         """
         adsDictList = []
         # Get all individual ads in a list
@@ -177,7 +190,7 @@ class ImmoCH(RealtorScrap):
             itemDict = {}
             # == Extract data-id from container == #
             try:
-                dataID = item['data-id']
+                dataID = item["data-id"]
             except KeyError:
                 itemDict["data-id"] = None
                 logger.warning(f"No data-id for item (KeyError) : {item}")
@@ -203,17 +216,25 @@ class ImmoCH(RealtorScrap):
             itemDict["ad-character-soup"] = adCharacter
             # == Go to page and scrap item full page == #
             if link != None:
-                logger.debug(f"Trying connection to item's page at URL : {itemDict['link']}")
+                logger.debug(
+                    f"Trying connection to item's page at URL : {itemDict['link']}"
+                )
                 pageItemSoup = self.getPageSoup(itemDict["link"])
                 try:
                     itemContainer = pageItemSoup.find(class_="container--large")
                 except Exception as e:
-                    logger.warning(f"Couldn't find item's container in item's page (item {dataID})")
+                    logger.warning(
+                        f"Couldn't find item's container in item's page (item {dataID})"
+                    )
                 else:
                     itemDict["item-page-soup"] = itemContainer
-                    logger.info(f"Item page's soup successfully extracted for item with id {dataID}")
+                    logger.info(
+                        f"Item page's soup successfully extracted for item with id {dataID}"
+                    )
             else:
-                logger.warning(f"Couldn't reach item's page, no link extracted for item with id {dataID}")
+                logger.warning(
+                    f"Couldn't reach item's page, no link extracted for item with id {dataID}"
+                )
             # Push dictionnary in list
             adsDictList.append(itemDict)
             logger.debug(f"Added new dictionnary in list : {itemDict}")
@@ -245,7 +266,9 @@ class ImmoCH(RealtorScrap):
             baseURL = self.URLs["commercial"]["mainURL"]
             params = self.URLs["commercial"]["params"]
         else:
-            raise AttributeError("Wrong attribute ! Attribute can be either 'flat', 'industrial' and 'commercial'")
+            raise AttributeError(
+                "Wrong attribute ! Attribute can be either 'flat', 'industrial' and 'commercial'"
+            )
         # Get total number of pages for given search (go to first page of search)
         # URL should look like this : "https://www.immobilier.ch/fr/carte/louer/appartement-maison/geneve/page-1?t=rent&c=1;2&p=s40&nb=false&gr=1"
         firstPageURL = f"{baseURL}page-1{params}"
@@ -257,7 +280,7 @@ class ImmoCH(RealtorScrap):
         if searchPages != None:
             # If user specified an exact number of page to search
             numberOfPages = searchPages
-        pagesList = [] # List of list containing dictionnaries representing ads
+        pagesList = []  # List of list containing dictionnaries representing ads
         for pageNb in range(1, numberOfPages + 1):
             pageURL = f"{baseURL}page-{pageNb}{params}"
             logger.info(f"Get soup from URL : '{pageURL}'")
@@ -279,7 +302,7 @@ class ImmoCH(RealtorScrap):
         Params
         ------
         filter : dict
-            Dictionnary with "minRent", "maxRent", "minSize", "maxSize", "minRooms" (only for flat search) and "maxRooms" (only for flat search) 
+            Dictionnary with "minRent", "maxRent", "minSize", "maxSize", "minRooms" (only for flat search) and "maxRooms" (only for flat search)
             keys.
         totalPages : int
             Total number of page to seach on website.
@@ -297,26 +320,36 @@ class ImmoCH(RealtorScrap):
                 try:
                     contentDiv = adData["ad-content-soup"].find(class_="title")
                 except AttributeError:
-                    logger.warning(f"ad['ad-content-soup'] is equal to None ! Couldn't extract rent from item ID {ad['data-id']}")
+                    logger.warning(
+                        f"ad['ad-content-soup'] is equal to None ! Couldn't extract rent from item ID {ad['data-id']}"
+                    )
                 else:
                     if contentDiv != None:
                         rawRent = re.sub("'", "", contentDiv.get_text())
                         try:
                             rent = int(re.search(r"\d+", rawRent).group())
                         except AttributeError:
-                            logger.warning(f"Couldn't extract rent from item ID {ad['data-id']}")
+                            logger.warning(
+                                f"Couldn't extract rent from item ID {ad['data-id']}"
+                            )
                         else:
-                            logger.debug(f"Extracted rent for item with ID {ad['data-id']}. Item rent : {rent} CHF")
+                            logger.debug(
+                                f"Extracted rent for item with ID {ad['data-id']}. Item rent : {rent} CHF"
+                            )
                             if rent >= filter["minRent"] and rent <= filter["maxRent"]:
-                                logger.debug(f"MATCH ! Rent of item {ad['data-id']} fit rent filter ! ({rent} CHF)")
+                                logger.debug(
+                                    f"MATCH ! Rent of item {ad['data-id']} fit rent filter ! ({rent} CHF)"
+                                )
                                 return rent
-        
+
         def getRooms(category, adData):
             if category == "flat":
                 try:
                     contentDiv = adData["ad-content-soup"].find(class_="object-type")
                 except AttributeError:
-                        logger.warning(f"ad['ad-content-soup'] is equal to None ! Couldn't extract rent from item ID {ad['data-id']}")
+                    logger.warning(
+                        f"ad['ad-content-soup'] is equal to None ! Couldn't extract rent from item ID {ad['data-id']}"
+                    )
                 else:
                     if contentDiv != None:
                         rawRooms = contentDiv.get_text()
@@ -324,11 +357,20 @@ class ImmoCH(RealtorScrap):
                             rooms = float(re.search(r"\d+\.?\d?", rawRooms).group())
                         except AttributeError:
                             rooms = None
-                            logger.warning(f"Couldn't extract rooms from item ID {ad['data-id']}")
+                            logger.warning(
+                                f"Couldn't extract rooms from item ID {ad['data-id']}"
+                            )
                         else:
-                            logger.debug(f"Extracted rent for item with ID {ad['data-id']}. Item rooms : {rooms}")
-                            if rooms >= filter["minRooms"] and rooms <= filter["maxRooms"]:
-                                logger.debug(f"MATCH ! Rooms of item {ad['data-id']} fit room filter ! (rooms : {rooms})")
+                            logger.debug(
+                                f"Extracted rent for item with ID {ad['data-id']}. Item rooms : {rooms}"
+                            )
+                            if (
+                                rooms >= filter["minRooms"]
+                                and rooms <= filter["maxRooms"]
+                            ):
+                                logger.debug(
+                                    f"MATCH ! Rooms of item {ad['data-id']} fit room filter ! (rooms : {rooms})"
+                                )
                                 return rooms
 
         # ======================== #
@@ -339,12 +381,16 @@ class ImmoCH(RealtorScrap):
             try:
                 filter["minRooms"] and filter["maxRooms"]
             except KeyError:
-                print("ERROR : You must indicate 'minRooms' and 'maxRooms' for an appartement search.")
-                logger.error("User didn't indicate 'minRooms' and 'maxRooms' for an appartement search in filter dict. Stopped script.")
-        
+                print(
+                    "ERROR : You must indicate 'minRooms' and 'maxRooms' for an appartement search."
+                )
+                logger.error(
+                    "User didn't indicate 'minRooms' and 'maxRooms' for an appartement search in filter dict. Stopped script."
+                )
+
         # Get list of ads (Nested list, each list is a page)
         allAdsList = self.searchPages(totalPages)
-        
+
         # === Main loop === #
         for page in allAdsList:
             for ad in page:
@@ -352,19 +398,19 @@ class ImmoCH(RealtorScrap):
                 rent = getFilteredRent(self.itemCategory, ad)
                 # == Get rooms == #
                 address = getRooms(self.itemCategory, ad)
-        
+
+
 # =========================== #
 # ====== QUICK TESTING ====== #
 # =========================== #
 obj = ImmoCH("flat")
 filterParams = {
-    "minRent" : 500,
-    "maxRent" : 1900,
-    "minSize" : 45,
-    "maxSize" : 80,
-    "minRooms" : 3.5,
-    "maxRooms" : 4
+    "minRent": 500,
+    "maxRent": 1900,
+    "minSize": 45,
+    "maxSize": 80,
+    "minRooms": 3.5,
+    "maxRooms": 4,
 }
 
 obj.getItems(filterParams, totalPages=1)
-
