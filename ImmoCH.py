@@ -312,10 +312,11 @@ class ImmoCH(RealtorScrap):
         # ================================== #
         # ========= CORE FUNCTIONS ========= #
         # ================================== #
-        def getFilteredRent(category, adData):
+        def getRent(category, adData):
             """
-            Extract matching rents and return them.
+            Extract rent from ad.
             """
+            rent = None
             if category == "flat":
                 try:
                     contentDiv = adData["ad-content-soup"].find(class_="title")
@@ -336,13 +337,14 @@ class ImmoCH(RealtorScrap):
                             logger.debug(
                                 f"Extracted rent for item with ID {ad['data-id']}. Item rent : {rent} CHF"
                             )
-                            if rent >= filter["minRent"] and rent <= filter["maxRent"]:
-                                logger.debug(
-                                    f"MATCH ! Rent of item {ad['data-id']} fit rent filter ! ({rent} CHF)"
-                                )
-                                return rent
+
+                return rent if rent != None else 0
 
         def getRooms(category, adData):
+            """
+            Extract rooms from ad.
+            """
+            rooms = None
             if category == "flat":
                 try:
                     contentDiv = adData["ad-content-soup"].find(class_="object-type")
@@ -356,7 +358,6 @@ class ImmoCH(RealtorScrap):
                         try:
                             rooms = float(re.search(r"\d+\.?\d?", rawRooms).group())
                         except AttributeError:
-                            rooms = None
                             logger.warning(
                                 f"Couldn't extract rooms from item ID {ad['data-id']}"
                             )
@@ -364,14 +365,8 @@ class ImmoCH(RealtorScrap):
                             logger.debug(
                                 f"Extracted rent for item with ID {ad['data-id']}. Item rooms : {rooms}"
                             )
-                            if (
-                                rooms >= filter["minRooms"]
-                                and rooms <= filter["maxRooms"]
-                            ):
-                                logger.debug(
-                                    f"MATCH ! Rooms of item {ad['data-id']} fit room filter ! (rooms : {rooms})"
-                                )
-                                return rooms
+
+                return rooms if rooms != None else 0
 
         # ======================== #
         # ========= MAIN ========= #
@@ -395,9 +390,17 @@ class ImmoCH(RealtorScrap):
         for page in allAdsList:
             for ad in page:
                 # == Get rent == #
-                rent = getFilteredRent(self.itemCategory, ad)
+                rent = getRent(self.itemCategory, ad)
                 # == Get rooms == #
-                address = getRooms(self.itemCategory, ad)
+                rooms = getRooms(self.itemCategory, ad)
+                if not (rent >= filter["minRent"] and rent <= filter["maxRent"]) and (
+                    rooms >= filter["minRooms"] and rooms <= filter["maxRooms"]
+                ):
+                    logger.info(
+                        f"Ad {ad['data-id']} doesn't fit filter criterias => {rooms} rooms and rent {rent} CHF."
+                    )
+                    # HERE ! HOW TO SKIP A LOOP ? IT TELLS ME IT'S NOT AN ITERATOR
+                    next(ad)
 
 
 # =========================== #
@@ -410,7 +413,7 @@ filterParams = {
     "minSize": 45,
     "maxSize": 80,
     "minRooms": 3.5,
-    "maxRooms": 4,
+    "maxRooms": 4.0,
 }
 
 obj.getItems(filterParams, totalPages=1)
