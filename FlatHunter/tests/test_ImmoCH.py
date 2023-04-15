@@ -1,8 +1,10 @@
 from FlatHunter.modules.ImmoCH import ImmoCH
 import unittest
 
-# Design me a test for this class
 class TestImmoCH(unittest.TestCase):
+    """
+    Test ImmoCH class.
+    """
     def setUp(self):
         self.test_object = ImmoCH("flat")
         # Create test URL (with flats params)
@@ -17,7 +19,6 @@ class TestImmoCH(unittest.TestCase):
         adsList = self.test_object.getAds(self.test_soup)
         self.assertTrue(isinstance(adsList, list)) # Is it a list ?
         self.assertGreater(len(adsList), 5) # Is there at least 5 ads ?
-        print(type(adsList[0]['ad-content-soup']))
         # Check if all attributes of first dict are present
         self.assertIn("data-id", adsList[0]) # Is there a data-id attribute ?
         self.assertIn("link", adsList[0]) # Is there a link attribute ?
@@ -32,7 +33,15 @@ class TestImmoCH(unittest.TestCase):
         self.assertIsInstance(adsList[0]["item-page-soup"], object) # Is item-page-soup an object ?
 
     def test_getItems(self):
-        pass
+        filterParams = {
+            "minRent": 500,
+            "maxRent": 1900,
+            "minSize": 45,
+            "maxSize": 80,
+            "minRooms": 3.5,
+            "maxRooms": 4.0,
+        }
+        self.test_object.getItems(filterParams, totalPages=1)
 
     def test_getNumberOfPages(self):
         """

@@ -129,7 +129,7 @@ class ImmoCH(FlatHunterBase):
 
     def searchPages(self, searchPages=None):
         """
-        Method that loop through pages and extract all ads informations.
+        Method that loop through pages and extract all ads.
 
         Params
         ------
@@ -195,40 +195,69 @@ class ImmoCH(FlatHunterBase):
         fileName : str
             Give a `.search` file type to get and filter its content (files are automatically created after a search).
         """
-        # ================================== #
-        # ========= CORE FUNCTIONS ========= #
-        # ================================== #
-        def getRent(category, adData):
-            """
-            Extract rent from ad.
-            """
-            rent = None
-            if category == "flat":
-                try:
-                    contentDiv = adData["ad-content-soup"].find(class_="title")
-                except AttributeError:
-                    logger.warning(
-                        f"ad['ad-content-soup'] is equal to None ! Couldn't extract rent from item ID {ad['data-id']}"
+        # === CHECK filter dict keys : If flat is selected, must also have rooms indicated === #
+        if self.itemCategory == "flat":
+            try:
+                filter["minRooms"] and filter["maxRooms"]
+            except KeyError:
+                print(
+                    "ERROR : You must indicate 'minRooms' and 'maxRooms' for an appartement search."
+                )
+                logger.error(
+                    "User didn't indicate 'minRooms' and 'maxRooms' for an appartement search in filter dict. Stopped script."
+                )
+
+        # Get list of ads (Nested list, each list is a page)
+        allAdsList = self.searchPages(totalPages)
+
+        # === Main loop === #
+        for page in allAdsList:
+            for ad in page:
+                # == Get rent == #
+                rent = self._getRentHelper(self.itemCategory, ad)
+                # == Get rooms == #
+                rooms = self._getRoomsHelper(self.itemCategory, ad)
+                if not (rent >= filter["minRent"] and rent <= filter["maxRent"]) and (
+                    rooms >= filter["minRooms"] and rooms <= filter["maxRooms"]
+                ):
+                    logger.info(
+                        f"Ad {ad['data-id']} doesn't fit filter criterias => {rooms} rooms and rent {rent} CHF."
                     )
-                else:
-                    if contentDiv != None:
-                        rawRent = re.sub("'", "", contentDiv.get_text())
-                        try:
-                            rent = int(re.search(r"\d+", rawRent).group())
-                        except AttributeError:
-                            logger.warning(
-                                f"Couldn't extract rent from item ID {ad['data-id']}"
-                            )
-                        else:
-                            logger.debug(
-                                f"Extracted rent for item with ID {ad['data-id']}. Item rent : {rent} CHF"
-                            )
+                    # HERE ! HOW TO SKIP A LOOP ? IT TELLS ME IT'S NOT AN ITERATOR
+                    next(ad)
 
-                return rent if rent != None else 0
 
-        def getRooms(category, adData):
+    def _getRentHelper(self, category, adData):
+        """
+        getItem's helper function to extract rent from ad.
+        """
+        rent = None
+        if category == "flat":
+            try:
+                contentDiv = adData["ad-content-soup"].find(class_="title")
+            except AttributeError:
+                logger.warning(
+                    f"ad['ad-content-soup'] is equal to None ! Couldn't extract rent from item ID {ad['data-id']}"
+                )
+            else:
+                if contentDiv != None:
+                    rawRent = re.sub("'", "", contentDiv.get_text())
+                    try:
+                        rent = int(re.search(r"\d+", rawRent).group())
+                    except AttributeError:
+                        logger.warning(
+                            f"Couldn't extract rent from item ID {ad['data-id']}"
+                        )
+                    else:
+                        logger.debug(
+                            f"Extracted rent for item with ID {ad['data-id']}. Item rent : {rent} CHF"
+                        )
+
+            return rent if rent != None else 0
+        
+    def _getRoomsHelper(category, adData):
             """
-            Extract rooms from ad.
+            getItem's helper function to extract rooms from ad.
             """
             rooms = None
             if category == "flat":
@@ -254,53 +283,3 @@ class ImmoCH(FlatHunterBase):
 
                 return rooms if rooms != None else 0
 
-        # ======================== #
-        # ========= MAIN ========= #
-        # ======================== #
-        # === CHECK filter dict keys : If flat is selected, must also have rooms indicated === #
-        if self.itemCategory == "flat":
-            try:
-                filter["minRooms"] and filter["maxRooms"]
-            except KeyError:
-                print(
-                    "ERROR : You must indicate 'minRooms' and 'maxRooms' for an appartement search."
-                )
-                logger.error(
-                    "User didn't indicate 'minRooms' and 'maxRooms' for an appartement search in filter dict. Stopped script."
-                )
-
-        # Get list of ads (Nested list, each list is a page)
-        allAdsList = self.searchPages(totalPages)
-
-        # === Main loop === #
-        for page in allAdsList:
-            for ad in page:
-                # == Get rent == #
-                rent = getRent(self.itemCategory, ad)
-                # == Get rooms == #
-                rooms = getRooms(self.itemCategory, ad)
-                if not (rent >= filter["minRent"] and rent <= filter["maxRent"]) and (
-                    rooms >= filter["minRooms"] and rooms <= filter["maxRooms"]
-                ):
-                    logger.info(
-                        f"Ad {ad['data-id']} doesn't fit filter criterias => {rooms} rooms and rent {rent} CHF."
-                    )
-                    # HERE ! HOW TO SKIP A LOOP ? IT TELLS ME IT'S NOT AN ITERATOR
-                    next(ad)
-
-
-# =========================== #
-# ====== QUICK TESTING ====== #
-# =========================== #
-# obj = ImmoCH("flat")
-
-# filterParams = {
-#     "minRent": 500,
-#     "maxRent": 1900,
-#     "minSize": 45,
-#     "maxSize": 80,
-#     "minRooms": 3.5,
-#     "maxRooms": 4.0,
-# }
-
-#obj.getItems(filterParams, totalPages=1)
