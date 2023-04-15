@@ -21,7 +21,6 @@ myEnv/
 db.sqlite3
 **/__pycache__
 __pycache__
-logs/
 *.log
 *.bak
 
@@ -45,7 +44,6 @@ logs/
 # == MISC == #
 /misc
 /driver
-/savedResults
 *.pickle
 pass.txt
 *.html
