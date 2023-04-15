@@ -180,6 +180,7 @@ class ImmoCH(FlatHunterBase):
         # ====== Return list ====== #
         return pagesList
 
+    # THIS IS THE MAIN METHOD TO USE !!! THIS IS THE API !!!
     def getItems(self, filter, totalPages=None):
         """
         This method is responsible for sorting the data according to user-defined filters and the total number of pages to be searched.
@@ -223,10 +224,9 @@ class ImmoCH(FlatHunterBase):
                     logger.info(
                         f"Ad {ad['data-id']} doesn't fit filter criterias => {rooms} rooms and rent {rent} CHF."
                     )
-                    # HERE ! HOW TO SKIP A LOOP ? IT TELLS ME IT'S NOT AN ITERATOR
-                    next(ad)
+                    continue  # Skip to next iteration of inner loop
 
-
+    # === HELPER FUNCTIONS === #
     def _getRentHelper(self, category, adData):
         """
         getItem's helper function to extract rent from ad.
@@ -237,7 +237,7 @@ class ImmoCH(FlatHunterBase):
                 contentDiv = adData["ad-content-soup"].find(class_="title")
             except AttributeError:
                 logger.warning(
-                    f"ad['ad-content-soup'] is equal to None ! Couldn't extract rent from item ID {ad['data-id']}"
+                    f"ad['ad-content-soup'] is equal to None ! Couldn't extract rent from item ID {adData['data-id']}"
                 )
             else:
                 if contentDiv != None:
@@ -246,16 +246,16 @@ class ImmoCH(FlatHunterBase):
                         rent = int(re.search(r"\d+", rawRent).group())
                     except AttributeError:
                         logger.warning(
-                            f"Couldn't extract rent from item ID {ad['data-id']}"
+                            f"Couldn't extract rent from item ID {adData['data-id']}"
                         )
                     else:
                         logger.debug(
-                            f"Extracted rent for item with ID {ad['data-id']}. Item rent : {rent} CHF"
+                            f"Extracted rent for item with ID {adData['data-id']}. Item rent : {rent} CHF"
                         )
 
             return rent if rent != None else 0
         
-    def _getRoomsHelper(category, adData):
+    def _getRoomsHelper(self, category, adData):
             """
             getItem's helper function to extract rooms from ad.
             """
@@ -265,7 +265,7 @@ class ImmoCH(FlatHunterBase):
                     contentDiv = adData["ad-content-soup"].find(class_="object-type")
                 except AttributeError:
                     logger.warning(
-                        f"ad['ad-content-soup'] is equal to None ! Couldn't extract rent from item ID {ad['data-id']}"
+                        f"ad['ad-content-soup'] is equal to None ! Couldn't extract rent from item ID {adData['data-id']}"
                     )
                 else:
                     if contentDiv != None:
@@ -274,12 +274,11 @@ class ImmoCH(FlatHunterBase):
                             rooms = float(re.search(r"\d+\.?\d?", rawRooms).group())
                         except AttributeError:
                             logger.warning(
-                                f"Couldn't extract rooms from item ID {ad['data-id']}"
+                                f"Couldn't extract rooms from item ID {adData['data-id']}"
                             )
                         else:
                             logger.debug(
-                                f"Extracted rent for item with ID {ad['data-id']}. Item rooms : {rooms}"
+                                f"Extracted rent for item with ID {adData['data-id']}. Item rooms : {rooms}"
                             )
 
                 return rooms if rooms != None else 0
-
