@@ -16,8 +16,9 @@ myEnv/
 # # == DJANGO == #
 **/__pycache__
 __pycache__
-.log
-.bak
+# !logs/
+# *.log
+# *.bak
 
 # # === MEDIA FILES === #
 *.png
