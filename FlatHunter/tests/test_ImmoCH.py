@@ -1,10 +1,11 @@
-from FlatHunter.modules import ImmoCH
+from FlatHunter.modules.ImmoCH import ImmoCH
 import unittest
 
 # Design me a test for this class
 class TestImmoCH(unittest.TestCase):
     def setUp(self):
         self.test_object = ImmoCH.ImmoCH("flat")
+        print(self.test_object.URLs)
 
     def test_getAds(self):
         pass
