@@ -292,15 +292,15 @@ class ImmoCH(FlatHunterBase):
 # =========================== #
 # ====== QUICK TESTING ====== #
 # =========================== #
-obj = ImmoCH("flat")
+# obj = ImmoCH("flat")
 
-filterParams = {
-    "minRent": 500,
-    "maxRent": 1900,
-    "minSize": 45,
-    "maxSize": 80,
-    "minRooms": 3.5,
-    "maxRooms": 4.0,
-}
+# filterParams = {
+#     "minRent": 500,
+#     "maxRent": 1900,
+#     "minSize": 45,
+#     "maxSize": 80,
+#     "minRooms": 3.5,
+#     "maxRooms": 4.0,
+# }
 
-obj.getItems(filterParams, totalPages=1)
+#obj.getItems(filterParams, totalPages=1)
