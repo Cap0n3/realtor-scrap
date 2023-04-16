@@ -12,7 +12,7 @@ class TestImmoCH(unittest.TestCase):
         self.test_URL = self.test_object.URLs["flats"]["mainURL"] + self.test_object.URLs["flats"]["params"]
         self.test_soup = self.test_object.getPageSoup(self.test_URL)
 
-    @unittest.skip("Skip test_getItems()")
+    #@unittest.skip("Skip test_getItems()")
     def test_getItems(self):
         # Large search
         filterParams = {
@@ -29,13 +29,14 @@ class TestImmoCH(unittest.TestCase):
         for ad in filteredAds:
             self.assertIn("data-id", ad) # Is there a data-id attribute ?
             self.assertIn("link", ad) # Is there a link attribute ?
-            self.assertIn("ad-content-soup", ad) # Is there a ad-content-soup attribute ?
-            self.assertIn("ad-character-soup", ad) # Is there a ad-character-soup attribute ?
-            self.assertIn("item-page-soup", ad) # Is there a item-page-soup attribute ?
+            self.assertIn("rent", ad) # Is there a rent attribute ?
+            self.assertIn("rooms", ad) # Is there a rooms attribute ?
+            self.assertIn("size", ad) # Is there a size attribute ?
             self.assertIsInstance(ad["data-id"], int) # Is data-id an int ?
             self.assertIsInstance(ad["link"], str) # Is link a string ?
-            self.assertIsInstance(ad["ad-content-soup"], Tag) # Is ad-content-soup a BeautifulSoup Tag object ?
-            self.assertIsInstance(ad["ad-character-soup"], Tag) # Is ad-character-soup a BeautifulSoup Tag object ?
+            self.assertIsInstance(ad["rent"], int) # Is rent an int ?
+            self.assertIsInstance(ad["rooms"], float) # Is rooms a float ?
+            self.assertIsInstance(ad["size"], int) # Is size an int ?
 
     @unittest.skip("Skip test_searchPages()")
     def test_searchPages(self):
@@ -47,7 +48,7 @@ class TestImmoCH(unittest.TestCase):
         self.assertGreater(len(searchList), 0) # Is there at least one page ?
         self.assertGreater(len(searchList[0]), 5) # Is there at least 5 ads ?
 
-    #@unittest.skip("Skip test_getAds()")
+    @unittest.skip("Skip test_getAds()")
     def test_getAds(self):
         """
         Check if it returns a list of at least 5 ads, if each ad is a dict with the right attributes 

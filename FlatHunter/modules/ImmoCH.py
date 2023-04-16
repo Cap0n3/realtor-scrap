@@ -181,7 +181,6 @@ class ImmoCH(FlatHunterBase):
         # ====== Return list ====== #
         return pagesList
 
-    # THIS IS THE MAIN METHOD TO USE !!! THIS IS THE API !!!
     def getItems(self, filter, totalPages=None):
         """
         This method is responsible for sorting the data according to user-defined filters and the total number of pages to be searched.
@@ -216,16 +215,30 @@ class ImmoCH(FlatHunterBase):
         # === Main loop === #
         for page in allAdsList:
             for ad in page:
+                formatedDict = {}
                 # == Get rent == #
                 rent = self._getRentHelper(self.itemCategory, ad)
                 # == Get rooms == #
                 rooms = self._getRoomsHelper(self.itemCategory, ad)
-                # Filter rent and rooms
+                # == Get size == #
+                size = self._getSizeHelper(self.itemCategory, ad)
+
+                # Check if ad is a match with filter dict keys (rent, room, size) and add it to filteredAdsList if it is
                 if rent >= filter["minRent"] and rent <= filter["maxRent"]:
                     if rooms >= filter["minRooms"] and rooms <= filter["maxRooms"]:
-                        logger.info(f"Ad {ad['data-id']} is a match => {rooms} rooms and rent {rent} CHF.")
-                        filteredAdsList.append(ad)
-        
+                        if size >= filter["minSize"] and size <= filter["maxSize"]:
+                            logger.info(
+                                f"Ad {ad['data-id']} is a match => {rooms} rooms, rent {rent} CHF and size {size} m2."
+                            )
+                            
+                            formatedDict["data-id"] = ad["data-id"]
+                            formatedDict["link"] = ad["link"]
+                            formatedDict["rent"] = rent
+                            formatedDict["rooms"] = rooms
+                            formatedDict["size"] = size
+
+                            filteredAdsList.append(formatedDict)
+
         # Return filtered ads list
         return filteredAdsList
 
@@ -285,3 +298,32 @@ class ImmoCH(FlatHunterBase):
                         )
 
             return rooms if rooms != None else 0
+
+    def _getSizeHelper(self, category, adData):
+        """
+        getItem's helper function to extract size from ad.
+        """
+        size = None
+        if category == "flat":
+            try:
+                contentDiv = adData["ad-character-soup"].find(class_="space")    
+            except AttributeError:
+                logger.warning(
+                    f"ad['ad-character-soup'] is equal to None ! Couldn't extract rent from item ID {adData['data-id']}"
+                )
+            else:
+                if contentDiv != None:
+                    rawSize = contentDiv.get_text()
+                    
+                    try:
+                        size = int(re.search(r"\d+\.?\d?", rawSize).group())
+                    except AttributeError:
+                        logger.warning(
+                            f"Couldn't extract size from item ID {adData['data-id']}"
+                        )
+                    else:
+                        logger.debug(
+                            f"Extracted rent for item with ID {adData['data-id']}. Item size : {size} m2"
+                        )
+            
+            return size if size != None else 0
