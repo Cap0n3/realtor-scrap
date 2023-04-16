@@ -2,6 +2,7 @@ import re
 from FlatHunter.utils.abstract_base import FlatHunterBase
 from FlatHunter.utils.logging_utils import logger
 
+
 class ImmoCH(FlatHunterBase):
     def __init__(self, itemCategory):
         self.URLs = {
@@ -193,8 +194,6 @@ class ImmoCH(FlatHunterBase):
             keys.
         totalPages : int
             Total number of page to seach on website.
-        fileName : str
-            Give a `.search` file type to get and filter its content (files are automatically created after a search).
         """
         # === CHECK filter dict keys : If flat is selected, must also have rooms indicated === #
         if self.itemCategory == "flat":
@@ -211,6 +210,9 @@ class ImmoCH(FlatHunterBase):
         # Get list of ads (Nested list, each list is a page)
         allAdsList = self.searchPages(totalPages)
 
+        # Create list of dictionnaries containing all filtered ads
+        filteredAdsList = []
+
         # === Main loop === #
         for page in allAdsList:
             for ad in page:
@@ -218,13 +220,14 @@ class ImmoCH(FlatHunterBase):
                 rent = self._getRentHelper(self.itemCategory, ad)
                 # == Get rooms == #
                 rooms = self._getRoomsHelper(self.itemCategory, ad)
-                if not (rent >= filter["minRent"] and rent <= filter["maxRent"]) and (
-                    rooms >= filter["minRooms"] and rooms <= filter["maxRooms"]
-                ):
-                    logger.info(
-                        f"Ad {ad['data-id']} doesn't fit filter criterias => {rooms} rooms and rent {rent} CHF."
-                    )
-                    continue  # Skip to next iteration of inner loop
+                # Filter rent and rooms
+                if rent >= filter["minRent"] and rent <= filter["maxRent"]:
+                    if rooms >= filter["minRooms"] and rooms <= filter["maxRooms"]:
+                        logger.info(f"Ad {ad['data-id']} is a match => {rooms} rooms and rent {rent} CHF.")
+                        filteredAdsList.append(ad)
+        
+        # Return filtered ads list
+        return filteredAdsList
 
     # === HELPER FUNCTIONS === #
     def _getRentHelper(self, category, adData):
@@ -254,31 +257,31 @@ class ImmoCH(FlatHunterBase):
                         )
 
             return rent if rent != None else 0
-        
-    def _getRoomsHelper(self, category, adData):
-            """
-            getItem's helper function to extract rooms from ad.
-            """
-            rooms = None
-            if category == "flat":
-                try:
-                    contentDiv = adData["ad-content-soup"].find(class_="object-type")
-                except AttributeError:
-                    logger.warning(
-                        f"ad['ad-content-soup'] is equal to None ! Couldn't extract rent from item ID {adData['data-id']}"
-                    )
-                else:
-                    if contentDiv != None:
-                        rawRooms = contentDiv.get_text()
-                        try:
-                            rooms = float(re.search(r"\d+\.?\d?", rawRooms).group())
-                        except AttributeError:
-                            logger.warning(
-                                f"Couldn't extract rooms from item ID {adData['data-id']}"
-                            )
-                        else:
-                            logger.debug(
-                                f"Extracted rent for item with ID {adData['data-id']}. Item rooms : {rooms}"
-                            )
 
-                return rooms if rooms != None else 0
+    def _getRoomsHelper(self, category, adData):
+        """
+        getItem's helper function to extract rooms from ad.
+        """
+        rooms = None
+        if category == "flat":
+            try:
+                contentDiv = adData["ad-content-soup"].find(class_="object-type")
+            except AttributeError:
+                logger.warning(
+                    f"ad['ad-content-soup'] is equal to None ! Couldn't extract rent from item ID {adData['data-id']}"
+                )
+            else:
+                if contentDiv != None:
+                    rawRooms = contentDiv.get_text()
+                    try:
+                        rooms = float(re.search(r"\d+\.?\d?", rawRooms).group())
+                    except AttributeError:
+                        logger.warning(
+                            f"Couldn't extract rooms from item ID {adData['data-id']}"
+                        )
+                    else:
+                        logger.debug(
+                            f"Extracted rent for item with ID {adData['data-id']}. Item rooms : {rooms}"
+                        )
+
+            return rooms if rooms != None else 0
