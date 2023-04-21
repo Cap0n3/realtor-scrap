@@ -67,7 +67,7 @@ class ImmoCH(FlatHunterBase):
                 <link> str : Link of ad
                 <ad-content-soup> class : Soup of `filter-content` tag (name, price, address, etc...)
                 <ad-character-soup> class : Soup of `filter-item-characteristic` tag (Size, rooms, etc...)
-                <item-page-soup> class : Soup of item's page `container` tag
+                <ad-page-soup> class : Soup of item's page `container` tag
         """
         adsDictList = []
         # Get all individual ads in a list
@@ -114,7 +114,7 @@ class ImmoCH(FlatHunterBase):
                         f"Couldn't find item's container in item's page (item {dataID})"
                     )
                 else:
-                    itemDict["item-page-soup"] = itemContainer
+                    itemDict["ad-page-soup"] = itemContainer
                     logger.info(
                         f"Item page's soup successfully extracted for item with id {dataID}"
                     )

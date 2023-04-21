@@ -62,13 +62,13 @@ class TestImmoCH(unittest.TestCase):
         self.assertIn("link", adsList[0]) # Is there a link attribute ?
         self.assertIn("ad-content-soup", adsList[0]) # Is there a ad-content-soup attribute ?
         self.assertIn("ad-character-soup", adsList[0]) # Is there a ad-character-soup attribute ?
-        self.assertIn("item-page-soup", adsList[0]) # Is there a item-page-soup attribute ?
+        self.assertIn("ad-page-soup", adsList[0]) # Is there a ad-page-soup attribute ?
         # Check if values of first dict are of the right type
         self.assertIsInstance(adsList[0]["data-id"], int) # Is data-id an int ?
         self.assertIsInstance(adsList[0]["link"], str) # Is link a string ?
         self.assertIsInstance(adsList[0]["ad-content-soup"], Tag) # Is ad-content-soup a BeautifulSoup Tag object ?
         self.assertIsInstance(adsList[0]["ad-character-soup"], Tag) # Is ad-character-soup a BeautifulSoup Tag object ?
-        self.assertIsInstance(adsList[0]["item-page-soup"], Tag) # Is item-page-soup a BeautifulSoup Tag object ?
+        self.assertIsInstance(adsList[0]["ad-page-soup"], Tag) # Is ad-page-soup a BeautifulSoup Tag object ?
 
     @unittest.skip("Skip test_getNumberOfPages()")
     def test_getNumberOfPages(self):

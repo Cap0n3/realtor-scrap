@@ -3,10 +3,16 @@ from pathlib import Path
 def getPath(param):
     """
     Get project's path.
+
+    Parameters
+    ----------
+    param : string
+        Either "project" or "root". "project" will return the path to the project's directory, "root" will return the path to the project's root directory.
+
     Returns
     -------
-    _type_
-        _description_
+    string
+        Absolute path to project's root or project directory.
     """
     currentPath = Path(__file__).parent.absolute()
     projectPath = currentPath.parent.absolute()

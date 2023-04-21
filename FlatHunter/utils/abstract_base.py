@@ -80,6 +80,52 @@ class FlatHunterBase(ABC):
             return BeautifulSoup(response.content, "html.parser")
 
     @staticmethod
+    def getElementsByClass(soup, get="all", _class=""):
+        """
+        Get one or multiple elements by class. Used to standardize the way elements are searched in a soup, handle errors and avoid repetition.
+
+        Parameters
+        ----------
+        soup : bs4.BeautifulSoup 
+            Soup of page to search in.
+        get : string
+            Either "all" or "first". "all" will return all elements matching the class, "first" will return the first element matching the class.
+        _class : string
+            Class to search for.
+
+        Returns
+        -------
+        list
+            List of all elements matching the class.
+        bs4.element.Tag
+            First element matching the class.
+        """
+        if get == "all":
+            try:
+                listOfElements = soup.find_all(class_=_class)
+            except Exception as e:
+                logger.error(e)
+                return None
+            else:
+                if listOfElements == []:
+                    logger.warning(f"No elements with class name '{_class}' found in soup !")
+                    return None
+                return listOfElements
+        elif get == "first":
+            try:
+                element = soup.find(class_=_class)
+            except Exception as e:
+                logger.error(e)
+                return None
+            else:
+                if element == None:
+                    logger.warning(f"No element with class name '{_class}' found !")
+                    return None
+                return element
+        else:
+            raise ValueError("Param 'get' must be either 'all' or 'first'")
+
+    @staticmethod
     def saveObject(obj, filePrefix, test=False):
         """
         Save object to a file for later use. Object saved is a dictionnary containing
