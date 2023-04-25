@@ -12,7 +12,7 @@ class TestImmoCH(unittest.TestCase):
         self.test_URL = self.test_object.URLs["flats"]["mainURL"] + self.test_object.URLs["flats"]["params"]
         self.test_soup = self.test_object.getPageSoup(self.test_URL)
 
-    #@unittest.skip("Skip test_getItems()")
+    @unittest.skip("Skip test_getItems()")
     def test_getItems(self):
         # Large search
         filterParams = {
@@ -37,6 +37,18 @@ class TestImmoCH(unittest.TestCase):
             self.assertIsInstance(ad["rent"], int) # Is rent an int ?
             self.assertIsInstance(ad["rooms"], float) # Is rooms a float ?
             self.assertIsInstance(ad["size"], int) # Is size an int ?
+
+    #@unittest.skip("Skip test_getElementsByClass()")
+    def test_getElementsByClass(self):
+        """
+        Test if getElementsByClass() returns a list of Tag objects.
+        """
+        testList = self.test_object.getElementsByClass(self.test_soup, get="all", _class="filter-item")
+        testTag = self.test_object.getElementsByClass(self.test_soup, get="first", _class="filter-item")
+        self.assertIsInstance(testList, list) # Is it a list ?
+        self.assertIsInstance(testList[0], Tag) # Is it a list of Tag objects ?
+        self.assertGreater(len(testList), 5) # Is there at least one element in list ?
+        self.assertIsInstance(testTag, Tag) # Is it a Tag object ?
 
     @unittest.skip("Skip test_searchPages()")
     def test_searchPages(self):
