@@ -108,7 +108,7 @@ class ImmoCH(FlatHunterBase):
                 )
                 pageItemSoup = self.getPageSoup(itemDict["link"])
                 try:
-                    itemContainer = pageItemSoup.find(class_="container--large")
+                    itemContainer = pageItemSoup.find(id="main")
                 except Exception as e:
                     logger.warning(
                         f"Couldn't find item's container in item's page (item {dataID})"
@@ -222,7 +222,7 @@ class ImmoCH(FlatHunterBase):
                 rooms = self._getRoomsHelper(self.itemCategory, ad)
                 # == Get size == #
                 size = self._getSizeHelper(self.itemCategory, ad)
-
+                images = self._getImagesHelper(self.itemCategory, ad)
                 # Check if ad is a match with filter dict keys (rent, room, size) and add it to filteredAdsList if it is
                 if rent >= filter["minRent"] and rent <= filter["maxRent"]:
                     if rooms >= filter["minRooms"] and rooms <= filter["maxRooms"]:
@@ -233,10 +233,11 @@ class ImmoCH(FlatHunterBase):
                             
                             formatedDict["data-id"] = ad["data-id"]
                             formatedDict["link"] = ad["link"]
+                            formatedDict["images"] = images
                             formatedDict["rent"] = rent
                             formatedDict["rooms"] = rooms
                             formatedDict["size"] = size
-
+                            # Add formated dict to filteredAdsList
                             filteredAdsList.append(formatedDict)
 
         # Return filtered ads list
@@ -327,3 +328,28 @@ class ImmoCH(FlatHunterBase):
                         )
             
             return size if size != None else 0
+        
+    def _getImagesHelper(self, category, adData):
+        """
+        getItem's helper function to extract images from ad.
+        """
+        try:
+            imgBS4List = FlatHunterBase.getElementsByClass(adData["ad-page-soup"], get="all", _class="im__banner__slider")
+        except KeyError:
+            logger.warning(
+                f"ad['ad-page-soup'] is equal to None ! Couldn't extract images from item ID {adData['data-id']}"
+            )
+        else:
+            imgDict = {}
+            if imgBS4List != None:
+                imagesBS4List = imgBS4List[0].find_all("img")
+                for image in imagesBS4List:
+                    imgAlt = image["alt"]
+                    images = image["data-lazy"]
+                    imgDict[imgAlt] = images
+            else:
+                logger.warning(
+                    f"Couldn't extract images from item ID {adData['data-id']}, 'im__banner__slider' is equal to None !"
+                )  
+            # Return dictionnary of images or empty dictionnary
+            return imgDict

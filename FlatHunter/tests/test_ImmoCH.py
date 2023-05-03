@@ -12,16 +12,16 @@ class TestImmoCH(unittest.TestCase):
         self.test_URL = self.test_object.URLs["flats"]["mainURL"] + self.test_object.URLs["flats"]["params"]
         self.test_soup = self.test_object.getPageSoup(self.test_URL)
 
-    @unittest.skip("Skip test_getItems()")
+    #@unittest.skip("Skip test_getItems()")
     def test_getItems(self):
         # Large search
         filterParams = {
             "minRent": 500,
-            "maxRent": 3000,
+            "maxRent": 5000,
             "minSize": 45,
-            "maxSize": 150,
+            "maxSize": 350,
             "minRooms": 2.0,
-            "maxRooms": 6.0,
+            "maxRooms": 8.0,
         }
         filteredAds = self.test_object.getItems(filterParams, totalPages=1)
         self.assertGreater(len(filteredAds), 5) # Is there at least 5 ads in returned list ?
@@ -29,16 +29,20 @@ class TestImmoCH(unittest.TestCase):
         for ad in filteredAds:
             self.assertIn("data-id", ad) # Is there a data-id attribute ?
             self.assertIn("link", ad) # Is there a link attribute ?
+            self.assertIn("images", ad) # Is there a images attribute ?
             self.assertIn("rent", ad) # Is there a rent attribute ?
             self.assertIn("rooms", ad) # Is there a rooms attribute ?
             self.assertIn("size", ad) # Is there a size attribute ?
             self.assertIsInstance(ad["data-id"], int) # Is data-id an int ?
             self.assertIsInstance(ad["link"], str) # Is link a string ?
+            self.assertIsInstance(ad["images"], dict) # Is images a dict ?
             self.assertIsInstance(ad["rent"], int) # Is rent an int ?
             self.assertIsInstance(ad["rooms"], float) # Is rooms a float ?
             self.assertIsInstance(ad["size"], int) # Is size an int ?
-
-    #@unittest.skip("Skip test_getElementsByClass()")
+        # Print first ad to check if it looks ok
+        # print(filteredAds[])
+    
+    @unittest.skip("Skip test_getElementsByClass()")
     def test_getElementsByClass(self):
         """
         Test if getElementsByClass() returns a list of Tag objects.
@@ -89,7 +93,6 @@ class TestImmoCH(unittest.TestCase):
         """
         nbOfPages = self.test_object.getNumberOfPages(self.test_soup)
         self.assertIsInstance(nbOfPages, int) # Is it an integer ?
-
 
 if __name__ == "__main__":
     unittest.main()
