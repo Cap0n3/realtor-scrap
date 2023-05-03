@@ -16,14 +16,14 @@ class TestImmoCH(unittest.TestCase):
     def test_getItems(self):
         # Large search
         filterParams = {
-            "minRent": 500,
+            "minRent": 400,
             "maxRent": 5000,
             "minSize": 45,
             "maxSize": 350,
             "minRooms": 2.0,
             "maxRooms": 8.0,
         }
-        filteredAds = self.test_object.getItems(filterParams, totalPages=1)
+        filteredAds = self.test_object.getItems(filterParams, pagesToSearch=1)
         self.assertGreater(len(filteredAds), 5) # Is there at least 5 ads in returned list ?
         # Check if each ad is a dict with the right attributes and if values are of the right type.
         for ad in filteredAds:
@@ -40,7 +40,8 @@ class TestImmoCH(unittest.TestCase):
             self.assertIsInstance(ad["rooms"], float) # Is rooms a float ?
             self.assertIsInstance(ad["size"], int) # Is size an int ?
         # Print first ad to check if it looks ok
-        # print(filteredAds[])
+        # print(filteredAds[0])
+        print(len(filteredAds))
     
     @unittest.skip("Skip test_getElementsByClass()")
     def test_getElementsByClass(self):
@@ -59,7 +60,7 @@ class TestImmoCH(unittest.TestCase):
         """
         Test if searchPages() returns a list and if it contains at least one page with 5 ads inside.
         """
-        searchList = self.test_object.searchPages(searchPages=1)
+        searchList = self.test_object.searchPages(pagesToSearch=1)
         self.assertIsInstance(searchList, list) # Is it a list of lists ?
         self.assertGreater(len(searchList), 0) # Is there at least one page ?
         self.assertGreater(len(searchList[0]), 5) # Is there at least 5 ads ?

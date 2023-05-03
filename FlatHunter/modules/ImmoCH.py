@@ -128,13 +128,13 @@ class ImmoCH(FlatHunterBase):
         # Return all ads
         return adsDictList
 
-    def searchPages(self, searchPages=None):
+    def searchPages(self, pagesToSearch=None):
         """
         Method that loop through pages and extract all ads.
 
         Params
         ------
-        searchPages : int
+        pagesToSearch : int
             How many pages should be searched. If left empty, it'll search all available pages.
 
         Returns
@@ -164,9 +164,9 @@ class ImmoCH(FlatHunterBase):
         numberOfPages = self.getNumberOfPages(soup)
         logger.info(f"Total number of pages for search is {numberOfPages}")
         # == Establish connexion with all individual pages (loop) == #
-        if searchPages != None:
+        if pagesToSearch != None:
             # If user specified an exact number of page to search
-            numberOfPages = searchPages
+            numberOfPages = pagesToSearch
         pagesList = []  # List of list containing dictionnaries representing ads
         for pageNb in range(1, numberOfPages + 1):
             pageURL = f"{baseURL}page-{pageNb}{params}"
@@ -181,7 +181,7 @@ class ImmoCH(FlatHunterBase):
         # ====== Return list ====== #
         return pagesList
 
-    def getItems(self, filter, totalPages=None):
+    def getItems(self, filter, pagesToSearch=None):
         """
         This method is responsible for sorting the data according to user-defined filters and the total number of pages to be searched.
         Note : See abstract class docString for more infos.
@@ -191,8 +191,8 @@ class ImmoCH(FlatHunterBase):
         filter : dict
             Dictionnary with "minRent", "maxRent", "minSize", "maxSize", "minRooms" (only for flat search) and "maxRooms" (only for flat search)
             keys.
-        totalPages : int
-            Total number of page to seach on website.
+        pagesToSearch : int
+            Total number of page to seach on website, if left empty it'll search all pages.
         
         Returns
         -------
@@ -212,7 +212,7 @@ class ImmoCH(FlatHunterBase):
                 )
 
         # Get list of ads (Nested list, each list is a page)
-        allAdsList = self.searchPages(totalPages)
+        allAdsList = self.searchPages(pagesToSearch)
 
         # Create list of dictionnaries containing all filtered ads
         filteredAdsList = []
