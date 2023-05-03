@@ -193,6 +193,11 @@ class ImmoCH(FlatHunterBase):
             keys.
         totalPages : int
             Total number of page to seach on website.
+        
+        Returns
+        -------
+        filteredAdsList : list
+            List of dictionnaries containing all filtered ads.
         """
         # === CHECK filter dict keys : If flat is selected, must also have rooms indicated === #
         if self.itemCategory == "flat":
