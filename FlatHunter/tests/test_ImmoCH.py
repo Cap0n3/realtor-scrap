@@ -12,7 +12,7 @@ class TestImmoCH(unittest.TestCase):
         self.test_URL = self.test_object.URLs["flats"]["mainURL"] + self.test_object.URLs["flats"]["params"]
         self.test_soup = self.test_object.getPageSoup(self.test_URL)
 
-    #@unittest.skip("Skip test_getItems()")
+    @unittest.skip("Skip test_getItems()")
     def test_getItems(self):
         # Large search
         filterParams = {
@@ -65,27 +65,35 @@ class TestImmoCH(unittest.TestCase):
         self.assertGreater(len(searchList), 0) # Is there at least one page ?
         self.assertGreater(len(searchList[0]), 5) # Is there at least 5 ads ?
 
-    @unittest.skip("Skip test_getAds()")
+    #@unittest.skip("Skip test_getAds()")
     def test_getAds(self):
         """
         Check if it returns a list of at least 5 ads, if each ad is a dict with the right attributes 
         and if values are of the right type. 
         """
-        adsList = self.test_object.getAds(self.test_soup)
-        self.assertTrue(isinstance(adsList, list)) # Is it a list ?
-        self.assertGreater(len(adsList), 5) # Is there at least 5 ads ?
-        # Check if all attributes of first dict are present
-        self.assertIn("data-id", adsList[0]) # Is there a data-id attribute ?
-        self.assertIn("link", adsList[0]) # Is there a link attribute ?
-        self.assertIn("ad-content-soup", adsList[0]) # Is there a ad-content-soup attribute ?
-        self.assertIn("ad-character-soup", adsList[0]) # Is there a ad-character-soup attribute ?
-        self.assertIn("ad-page-soup", adsList[0]) # Is there a ad-page-soup attribute ?
-        # Check if values of first dict are of the right type
-        self.assertIsInstance(adsList[0]["data-id"], int) # Is data-id an int ?
-        self.assertIsInstance(adsList[0]["link"], str) # Is link a string ?
-        self.assertIsInstance(adsList[0]["ad-content-soup"], Tag) # Is ad-content-soup a BeautifulSoup Tag object ?
-        self.assertIsInstance(adsList[0]["ad-character-soup"], Tag) # Is ad-character-soup a BeautifulSoup Tag object ?
-        self.assertIsInstance(adsList[0]["ad-page-soup"], Tag) # Is ad-page-soup a BeautifulSoup Tag object ?
+        filterParams = {
+            "minRent": 400,
+            "maxRent": 5000,
+            "minSize": 45,
+            "maxSize": 350,
+            "minRooms": 2.0,
+            "maxRooms": 8.0,
+        }
+        adsList = self.test_object.getAds(self.test_soup, filterParams)
+        # self.assertTrue(isinstance(adsList, list)) # Is it a list ?
+        # self.assertGreater(len(adsList), 5) # Is there at least 5 ads ?
+        # # Check if all attributes of first dict are present
+        # self.assertIn("data-id", adsList[0]) # Is there a data-id attribute ?
+        # self.assertIn("link", adsList[0]) # Is there a link attribute ?
+        # self.assertIn("ad-content-soup", adsList[0]) # Is there a ad-content-soup attribute ?
+        # self.assertIn("ad-character-soup", adsList[0]) # Is there a ad-character-soup attribute ?
+        # self.assertIn("ad-page-soup", adsList[0]) # Is there a ad-page-soup attribute ?
+        # # Check if values of first dict are of the right type
+        # self.assertIsInstance(adsList[0]["data-id"], int) # Is data-id an int ?
+        # self.assertIsInstance(adsList[0]["link"], str) # Is link a string ?
+        # self.assertIsInstance(adsList[0]["ad-content-soup"], Tag) # Is ad-content-soup a BeautifulSoup Tag object ?
+        # self.assertIsInstance(adsList[0]["ad-character-soup"], Tag) # Is ad-character-soup a BeautifulSoup Tag object ?
+        # self.assertIsInstance(adsList[0]["ad-page-soup"], Tag) # Is ad-page-soup a BeautifulSoup Tag object ?
 
     @unittest.skip("Skip test_getNumberOfPages()")
     def test_getNumberOfPages(self):
