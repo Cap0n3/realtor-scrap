@@ -41,7 +41,7 @@ class TestImmoCH(unittest.TestCase):
             self.assertIsInstance(ad["size"], int) # Is size an int ?
         # Print first ad to check if it looks ok
         # print(filteredAds[0])
-        print(len(filteredAds))
+        print("\n Scraped " + str(len(filteredAds)) + " ads.\n")
     
     @unittest.skip("Skip test_getElementsByClass()")
     def test_getElementsByClass(self):
