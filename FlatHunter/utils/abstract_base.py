@@ -9,6 +9,7 @@ from datetime import datetime
 from abc import ABC, abstractmethod
 
 ROOT_PATH = getPath("root")
+PROJECT_PATH = getPath("project")
 
 class FlatHunterBase(ABC):
     def __init__(self, itemCategory):
@@ -17,17 +18,6 @@ class FlatHunterBase(ABC):
         and construct a dictionary containing all necessary URLs for each type of item category.
         """
         self.itemCategory = itemCategory
-
-    @abstractmethod
-    def getItems(self):
-        """
-        This method should be the main method and the object's user entry point. It should be responsible for sorting the data according to user-defined 
-        filters and the total number of pages to be searched. It should call searchPages() method, retrieve list containing all unrefined 
-        and unfiltered ads and filter all relevant infos from ad dictionnaries (rent, rooms, etc...).
-
-        Note : This method is the one that user will call to get filtered information about ads.
-        """
-        pass
 
     @abstractmethod
     def searchPages(self):
@@ -72,13 +62,29 @@ class FlatHunterBase(ABC):
             response.raise_for_status()
         except HTTPError as http_err:
             logger.error(f"HTTP error occurred: {http_err}")  # Python 3.6
+            raise HTTPError(f"HTTP error occurred : {http_err}")
         except Exception as err:
             logger.error(f"Other error occurred: {err}")  # Python 3.6
+            raise Exception(f"Other error occurred : {err}")
         else:
             logger.info(f"Succssfully connected to {_url}")
             # Return page's soup
             return BeautifulSoup(response.content, "html.parser")
 
+    def dumpSoupHtml(self, soup, filename):
+        """
+        Dump soup's html to a file. For debugging purposes.
+
+        Params
+        ------
+        soup : bs4.BeautifulSoup
+            Soup to dump.
+        filename : string
+            Name of file to dump soup's html to.
+        """
+        with open(f"{PROJECT_PATH}/tests/pageDump/{filename}.html", "w") as file:
+            file.write(soup.prettify())
+    
     @staticmethod
     def getElementsByClass(soup, get="all", _class=""):
         """
@@ -96,9 +102,9 @@ class FlatHunterBase(ABC):
         Returns
         -------
         list
-            List of all elements matching the class.
+            List of all elements matching the class (or None).
         bs4.element.Tag
-            First element matching the class.
+            First element matching the class (or None).
         """
         if get == "all":
             try:

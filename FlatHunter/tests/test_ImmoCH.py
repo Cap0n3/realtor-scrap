@@ -80,20 +80,19 @@ class TestImmoCH(unittest.TestCase):
             "maxRooms": 8.0,
         }
         adsList = self.test_object.getAds(self.test_soup, filterParams)
-        # self.assertTrue(isinstance(adsList, list)) # Is it a list ?
-        # self.assertGreater(len(adsList), 5) # Is there at least 5 ads ?
-        # # Check if all attributes of first dict are present
-        # self.assertIn("data-id", adsList[0]) # Is there a data-id attribute ?
-        # self.assertIn("link", adsList[0]) # Is there a link attribute ?
-        # self.assertIn("ad-content-soup", adsList[0]) # Is there a ad-content-soup attribute ?
-        # self.assertIn("ad-character-soup", adsList[0]) # Is there a ad-character-soup attribute ?
-        # self.assertIn("ad-page-soup", adsList[0]) # Is there a ad-page-soup attribute ?
-        # # Check if values of first dict are of the right type
-        # self.assertIsInstance(adsList[0]["data-id"], int) # Is data-id an int ?
-        # self.assertIsInstance(adsList[0]["link"], str) # Is link a string ?
-        # self.assertIsInstance(adsList[0]["ad-content-soup"], Tag) # Is ad-content-soup a BeautifulSoup Tag object ?
-        # self.assertIsInstance(adsList[0]["ad-character-soup"], Tag) # Is ad-character-soup a BeautifulSoup Tag object ?
-        # self.assertIsInstance(adsList[0]["ad-page-soup"], Tag) # Is ad-page-soup a BeautifulSoup Tag object ?
+        self.assertTrue(isinstance(adsList, list)) # Is it a list ?
+        self.assertGreater(len(adsList), 5) # Is there at least 5 ads ?        
+        # Check if all attributes of first dict are present
+        self.assertIn("data-id", adsList[0]) # Is there a data-id attribute ?
+        self.assertIn("link", adsList[0]) # Is there a link attribute ?
+        self.assertIn("images", adsList[0]) # Is there a images attribute ?
+        self.assertIn("rent", adsList[0]) # Is there a rent attribute ?
+        self.assertIn("rooms", adsList[0]) # Is there a rooms attribute ?
+        self.assertIn("size", adsList[0]) # Is there a size attribute ?
+
+        # print adsList dictionnaries in json format with indent and correct encoding to check if they look ok
+        import json
+        print(json.dumps(adsList, indent=4, ensure_ascii=False))
 
     @unittest.skip("Skip test_getNumberOfPages()")
     def test_getNumberOfPages(self):

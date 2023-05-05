@@ -2,7 +2,6 @@ import re
 from FlatHunter.utils.abstract_base import FlatHunterBase
 from FlatHunter.utils.logging_utils import logger
 
-
 class ImmoCH(FlatHunterBase):
     def __init__(self, itemCategory):
         self.URLs = {
@@ -48,83 +47,77 @@ class ImmoCH(FlatHunterBase):
             lastPageNumber = int(liList[-1].get_text())
             return lastPageNumber
 
-    def getAds(self, _soup):
+    def getAds(self, _soup, filter=None):
         """
-        Extract ad main elements, basically it'll extract ad `data-id` and `link` along with its three main elements
-        `filter-content`, `filter-item-characteristic` and item `container` div soup that contains all important data concerning
-        the good (no matter if it's flat, industrial or commercial).
+        Get all ads from a given page. Apply filters if any.
 
         Params
         ------
         _soup : <class bs4>
-            Page soup containing all the ads
+            BS4 soup of first search page.
+        filter : dict
+            Dictionary containing filters to apply to ads, if ommited, no filter is applied.
 
-        Returns
-        -------
+        Return
+        ------
         adsDictList : list
-            List containing dictionnaries (representing each ads) with keys :
-                <data-id> int : ID of ad
-                <link> str : Link of ad
-                <ad-content-soup> class : Soup of `filter-content` tag (name, price, address, etc...)
-                <ad-character-soup> class : Soup of `filter-item-characteristic` tag (Size, rooms, etc...)
-                <ad-page-soup> class : Soup of item's page `container` tag
+            List of dictionnaries containing all ads informations.
         """
         adsDictList = []
+        
         # Get all individual ads in a list
-        allAdItems = _soup.find_all(class_="filter-item")
-        # Extract container content
-        for item in allAdItems:
-            itemDict = {}
+        allAdItems = FlatHunterBase.getElementsByClass(_soup, get="all", _class="filter-item")
+
+        for ad in allAdItems:
+            adDict = {}
             # == Extract data-id from container == #
             try:
-                dataID = item["data-id"]
+                dataID = ad["data-id"]
             except KeyError:
-                itemDict["data-id"] = None
-                logger.warning(f"No data-id for item (KeyError) : {item}")
+                adDict["data-id"] = None
+                dataID = 0
+                logger.warning(f"No data-id for item (KeyError) : {ad}")
             else:
-                itemDict["data-id"] = int(dataID)
+                adDict["data-id"] = int(dataID)
                 logger.debug(f"Extracting item with data-id {dataID}")
-            # Get ad container (item link and all infos about link)
-            adContainer = item.find(class_="filter-item-container")
+            # Get ad content (name, price, address, etc...), ad characteristics (Size, rooms, etc...) and ad container (link)
+            adContent = FlatHunterBase.getElementsByClass(ad, get="first", _class="filter-item-content")
+            adCaracteristics = FlatHunterBase.getElementsByClass(ad, get="first", _class="filter-item-characteristic")
+            adContainer = FlatHunterBase.getElementsByClass(ad, get="first", _class="filter-item-container")
+            # == Extract ad rent price == #
+            rentStringBS4 = FlatHunterBase.getElementsByClass(adContent, get="first", _class="title")
+            adDict["rent"] = self._formatRentStringHelper(dataID, rentStringBS4)
+            # == Extract ad address == #
+            addressStringBS4 = self._getAddressHelper(dataID, adContent)
+            # == Extract ad Rooms == #
+            roomsStringBS4 = FlatHunterBase.getElementsByClass(adCaracteristics, get="first", _class="icon-plan")
+            adDict["rooms"] = self._formatRoomsStringHelper(dataID, roomsStringBS4["title"] if roomsStringBS4 else None)
+            # == Extract ad Size == #
+            sizeStringBS4 = FlatHunterBase.getElementsByClass(adCaracteristics, get="first", _class="space")
+            adDict["size"] = self._formatSizeStringHelper(dataID, sizeStringBS4)
             # == Extract item link from container == #
-            try:
-                link = adContainer.find(id=f"link-result-item-{dataID}")
-            except KeyError:
-                itemDict["link"] = None
-                logger.warning(f"No link for item with data-id {dataID} : KeyError")
-            else:
-                if link != None:
-                    itemDict["link"] = self.URLs["website"] + link["href"]
-            # Get ad content (name, price, address, etc...)
-            adContent = adContainer.find(class_="filter-item-content")
-            itemDict["ad-content-soup"] = adContent
-            # Get ad characteristics (Size, rooms, etc...)
-            adCharacter = adContainer.find(class_="filter-item-characteristic")
-            itemDict["ad-character-soup"] = adCharacter
-            # == Go to page and scrap item full page == #
-            if link != None:
-                logger.debug(
-                    f"Trying connection to item's page at URL : {itemDict['link']}"
-                )
-                pageItemSoup = self.getPageSoup(itemDict["link"])
-                try:
-                    itemContainer = pageItemSoup.find(id="main")
-                except Exception as e:
-                    logger.warning(
-                        f"Couldn't find item's container in item's page (item {dataID})"
-                    )
-                else:
-                    itemDict["ad-page-soup"] = itemContainer
-                    logger.info(
-                        f"Item page's soup successfully extracted for item with id {dataID}"
-                    )
-            else:
-                logger.warning(
-                    f"Couldn't reach item's page, no link extracted for item with id {dataID}"
-                )
-            # Push dictionnary in list
-            adsDictList.append(itemDict)
-            logger.debug(f"Added new dictionnary in list : {itemDict}")
+            adDict["link"] = self._getAdLinkHelper(dataID, adContainer)
+            # == Apply filters or not == #
+            if filter:
+                if adDict["rent"] >= filter["minRent"] and adDict["rent"] <= filter["maxRent"]:
+                        if adDict["rooms"] >= filter["minRooms"] and adDict["rooms"] <= filter["maxRooms"]:
+                            if adDict["size"] >= filter["minSize"] and adDict["size"] <= filter["maxSize"]:
+                                logger.info(
+                                    f"Ad {ad['data-id']} is a match => {adDict['rooms']} rooms, rent {adDict['rent']} CHF and size {adDict['size']} m2."
+                                )
+                                adPageData = self.followAdLinkAndExtractData(adDict["data-id"], adDict["link"])
+                                # merge both dictionnaries
+                                adDict = {**adDict, **adPageData}
+                                # Push dictionnary to list
+                                adsDictList.append(adDict)
+            elif not filter:
+                logger.info(f"(No filters) Ad {ad['data-id']} => {adDict['rooms']} rooms, rent {adDict['rent']} CHF and size {adDict['size']} m2.")
+                adPageData = self.followAdLinkAndExtractData(adDict["data-id"], adDict["link"])
+                # merge both dictionnaries
+                adDict = {**adDict, **adPageData}
+                # Push dictionnary to list
+                adsDictList.append(adDict)
+        
         # Return all ads
         return adsDictList
 
@@ -181,171 +174,19 @@ class ImmoCH(FlatHunterBase):
         # ====== Return list ====== #
         return pagesList
 
-    def getItems(self, filter, pagesToSearch=None):
-        """
-        This method is responsible for sorting the data according to user-defined filters and the total number of pages to be searched.
-        Note : See abstract class docString for more infos.
-
-        Params
-        ------
-        filter : dict
-            Dictionnary with "minRent", "maxRent", "minSize", "maxSize", "minRooms" (only for flat search) and "maxRooms" (only for flat search)
-            keys.
-        pagesToSearch : int
-            Total number of page to seach on website, if left empty it'll search all pages.
-        
-        Returns
-        -------
-        filteredAdsList : list
-            List of dictionnaries containing all filtered ads.
-        """
-        # === CHECK filter dict keys : If flat is selected, must also have rooms indicated === #
-        if self.itemCategory == "flat":
-            try:
-                filter["minRooms"] and filter["maxRooms"]
-            except KeyError:
-                print(
-                    "ERROR : You must indicate 'minRooms' and 'maxRooms' for an appartement search."
-                )
-                logger.error(
-                    "User didn't indicate 'minRooms' and 'maxRooms' for an appartement search in filter dict. Stopped script."
-                )
-
-        # Get list of ads (Nested list, each list is a page)
-        allAdsList = self.searchPages(pagesToSearch)
-
-        # Create list of dictionnaries containing all filtered ads
-        filteredAdsList = []
-
-        # === Main loop === #
-        for page in allAdsList:
-            for ad in page:
-                formatedDict = {}
-                # == Get rent == #
-                rent = self._getRentHelper(self.itemCategory, ad)
-                # == Get rooms == #
-                rooms = self._getRoomsHelper(self.itemCategory, ad)
-                # == Get size == #
-                size = self._getSizeHelper(self.itemCategory, ad)
-                images = self._getImagesHelper(self.itemCategory, ad)
-                # Check if ad is a match with filter dict keys (rent, room, size) and add it to filteredAdsList if it is
-                if rent >= filter["minRent"] and rent <= filter["maxRent"]:
-                    if rooms >= filter["minRooms"] and rooms <= filter["maxRooms"]:
-                        if size >= filter["minSize"] and size <= filter["maxSize"]:
-                            logger.info(
-                                f"Ad {ad['data-id']} is a match => {rooms} rooms, rent {rent} CHF and size {size} m2."
-                            )
-                            
-                            formatedDict["data-id"] = ad["data-id"]
-                            formatedDict["link"] = ad["link"]
-                            formatedDict["images"] = images
-                            formatedDict["rent"] = rent
-                            formatedDict["rooms"] = rooms
-                            formatedDict["size"] = size
-                            # Add formated dict to filteredAdsList
-                            filteredAdsList.append(formatedDict)
-
-        # Return filtered ads list
-        return filteredAdsList
-
-    # === HELPER FUNCTIONS === #
-    def _getRentHelper(self, category, adData):
-        """
-        getItem's helper function to extract rent from ad.
-        """
-        rent = None
-        if category == "flat":
-            try:
-                contentDiv = adData["ad-content-soup"].find(class_="title")
-            except AttributeError:
-                logger.warning(
-                    f"ad['ad-content-soup'] is equal to None ! Couldn't extract rent from item ID {adData['data-id']}"
-                )
-            else:
-                if contentDiv != None:
-                    rawRent = re.sub("'", "", contentDiv.get_text())
-                    try:
-                        rent = int(re.search(r"\d+", rawRent).group())
-                    except AttributeError:
-                        logger.warning(
-                            f"Couldn't extract rent from item ID {adData['data-id']}"
-                        )
-                    else:
-                        logger.debug(
-                            f"Extracted rent for item with ID {adData['data-id']}. Item rent : {rent} CHF"
-                        )
-
-            return rent if rent != None else 0
-
-    def _getRoomsHelper(self, category, adData):
-        """
-        getItem's helper function to extract rooms from ad.
-        """
-        rooms = None
-        if category == "flat":
-            try:
-                contentDiv = adData["ad-content-soup"].find(class_="object-type")
-            except AttributeError:
-                logger.warning(
-                    f"ad['ad-content-soup'] is equal to None ! Couldn't extract rent from item ID {adData['data-id']}"
-                )
-            else:
-                if contentDiv != None:
-                    rawRooms = contentDiv.get_text()
-                    try:
-                        rooms = float(re.search(r"\d+\.?\d?", rawRooms).group())
-                    except AttributeError:
-                        logger.warning(
-                            f"Couldn't extract rooms from item ID {adData['data-id']}"
-                        )
-                    else:
-                        logger.debug(
-                            f"Extracted rent for item with ID {adData['data-id']}. Item rooms : {rooms}"
-                        )
-
-            return rooms if rooms != None else 0
-
-    def _getSizeHelper(self, category, adData):
-        """
-        getItem's helper function to extract size from ad.
-        """
-        size = None
-        if category == "flat":
-            try:
-                contentDiv = adData["ad-character-soup"].find(class_="space")    
-            except AttributeError:
-                logger.warning(
-                    f"ad['ad-character-soup'] is equal to None ! Couldn't extract rent from item ID {adData['data-id']}"
-                )
-            else:
-                if contentDiv != None:
-                    rawSize = contentDiv.get_text()
-                    
-                    try:
-                        size = int(re.search(r"\d+\.?\d?", rawSize).group())
-                    except AttributeError:
-                        logger.warning(
-                            f"Couldn't extract size from item ID {adData['data-id']}"
-                        )
-                    else:
-                        logger.debug(
-                            f"Extracted rent for item with ID {adData['data-id']}. Item size : {size} m2"
-                        )
-            
-            return size if size != None else 0
-        
-    def _getImagesHelper(self, category, adData):
+    # === HELPER FUNCTIONS === #        
+    def _getImagesHelper(self, dataID, adSoup):
         """
         getItem's helper function to extract images from ad.
         """
+        imgDict = {}
         try:
-            imgBS4List = FlatHunterBase.getElementsByClass(adData["ad-page-soup"], get="all", _class="im__banner__slider")
+            imgBS4List = FlatHunterBase.getElementsByClass(adSoup, get="all", _class="im__banner__slider")
         except KeyError:
             logger.warning(
-                f"ad['ad-page-soup'] is equal to None ! Couldn't extract images from item ID {adData['data-id']}"
+                f"Couldn't extract images from item ID {dataID}, will return empty dictionnary !"
             )
         else:
-            imgDict = {}
             if imgBS4List != None:
                 imagesBS4List = imgBS4List[0].find_all("img")
                 for image in imagesBS4List:
@@ -354,7 +195,192 @@ class ImmoCH(FlatHunterBase):
                     imgDict[imgAlt] = images
             else:
                 logger.warning(
-                    f"Couldn't extract images from item ID {adData['data-id']}, 'im__banner__slider' is equal to None !"
+                    f"Couldn't extract images from item ID {dataID}, 'im__banner__slider' is equal to None ! Will return empty dictionnary !"
                 )  
-            # Return dictionnary of images or empty dictionnary
-            return imgDict
+        # Return dictionnary of images (or empty dictionnary)
+        return imgDict
+
+    def _formatRentStringHelper(self, dataID, rentString):
+        """
+        getAds's helper function to extract and format rent string.
+
+        Params
+        ------
+        dataID : int
+            Ad's data-id.
+        rentString : bs4.element.Tag
+            Ad's raw rent string.
+
+        Returns
+        -------
+        rent : int
+            Ad's rent.
+        """
+        rent = None
+        if rentString != None:
+            rawRent = re.sub("'", "", rentString.get_text())
+            try:
+                rent = int(re.search(r"\d+", rawRent).group())
+            except AttributeError:
+                logger.warning(
+                    f"Couldn't extract rent from item ID {dataID} : {rentString.get_text()}"
+                )
+            else:
+                logger.debug(
+                    f"Extracted rent for item with ID {dataID,}. Item rent : {rent} CHF"
+                )
+
+        return rent if rent != None else 0
+    
+    def _formatRoomsStringHelper(self, dataID, roomsString):
+        """
+        getAds's helper function to extract and format rooms string.
+
+        Params
+        ------
+        dataID : int
+            Ad's data-id.
+        roomsString : bs4.element.Tag
+            Ad's raw rooms string.
+
+        Returns
+        -------
+        rooms : float
+            Ad's rooms.
+        """
+        rooms = None
+        if roomsString != None:
+            try:
+                rooms = float(re.search(r"\d+\.?\d?", roomsString).group())
+            except AttributeError:
+                logger.warning(
+                    f"Couldn't extract rooms from item ID {dataID} : {roomsString}"
+                )
+            else:
+                logger.debug(
+                    f"Extracted rooms for item with ID {dataID}. Item rooms : {rooms}"
+                )
+        else:
+            logger.warning(f"Ad with ID {dataID} had no rooms indicated !")
+        
+        return rooms if rooms != None else 0
+    
+    def _formatSizeStringHelper(self, dataID, sizeString):
+        """
+        getAds's helper function to extract and format size string.
+
+        Params
+        ------
+        dataID : int
+            Ad's data-id.
+        sizeString : bs4.element.Tag
+            Ad's raw size string.
+
+        Returns
+        -------
+        size : int
+            Ad's size.
+        """
+        size = None
+        if sizeString != None:
+            try:
+                size = int(re.search(r"\d+\.?\d?", sizeString.get_text()).group())
+            except AttributeError:
+                logger.warning(
+                    f"Couldn't extract size from item ID {dataID} : {sizeString}"
+                )
+            else:
+                logger.debug(
+                    f"Extracted size for item with ID {dataID}. Item size : {size} m2"
+                )
+        else:
+            logger.warning(f"Ad with ID {dataID} had no size indicated !")
+        
+        return size if size != None else 0
+    
+    def _getAdLinkHelper(self, dataID, adContainerSoup):
+        adURL = None
+
+        try:
+            link = adContainerSoup.find(id=f"link-result-item-{dataID}")
+        except KeyError:
+            logger.warning(f"No link for item with data-id {dataID} : KeyError")
+        else:
+            if link != None:
+                adURL = self.URLs["website"] + link["href"]
+                logger.debug(f"Extracted link for item with data-id {dataID} : {adURL}")
+        
+        return adURL
+
+    def _getChargesInTable(self, dataID, infoTableList):
+        isChargesIndicated = False
+        charges = 0
+        for row in infoTableList:
+            if "Charges :" in row:
+                try:
+                    charges = int(re.search(r"\d+", row).group())
+                except:
+                    logger.warning(f"Couldn't extract string charges in table from ad with ID {dataID}")
+                else:
+                    isChargesIndicated = True
+                    logger.debug(f"Extracted charges from table for ad with ID {dataID}. Charges : {charges} CHF")
+        
+        if not isChargesIndicated:
+            logger.warning(f"No charges were indicated in table for ad with ID {dataID}")
+            return charges
+        else:
+            return charges
+    
+    def _getAddressHelper(self, dataID, adContentSoup):
+        address = None
+        try:
+            address = adContentSoup.find("address").get_text()
+        except:
+            logger.warning(f"Couldn't extract address from ad with ID {dataID}")
+        else:
+            logger.debug(f"Extracted address from ad with ID {dataID} : {address}")
+        
+        return address
+
+    def followAdLinkAndExtractData(self, dataID, adLink):
+        """
+        Function to follow ad link and extract ad's data.
+
+        Params
+        ------
+        dataID : int
+            Ad's data-id.
+        adLink : str
+            Ad's link.
+
+        Returns
+        -------
+        adData : dict
+            Ad's data or empty dict.
+        """
+        adData = {}
+        if adLink != None:
+            logger.debug(
+                    f"Trying connection to item's page at URL : {adLink}"
+                )
+            # Get ad's page soup
+            adPageSoup = self.getPageSoup(adLink)
+            # == Get images == #
+            images = self._getImagesHelper(dataID, adPageSoup)
+            adData["images"] = images
+            # == Get ad's description == #
+            descriptionBS4 = FlatHunterBase.getElementsByClass(adPageSoup, get="first", _class="im__postContent__body")
+            adData["description"] = descriptionBS4.get_text() if descriptionBS4 != None else ""
+            # == Get info table rows == #
+            infoTableRowsBS4 = FlatHunterBase.getElementsByClass(adPageSoup, get="all", _class="im__table__row")
+            if infoTableRowsBS4 != None:
+                adData["infos"] = [info.get_text() for info in infoTableRowsBS4]
+                # == Extract charges from table == #
+                adData["charges"] = self._getChargesInTable(dataID, adData["infos"])
+            else:
+                logger.warning(f"No info table found in page for ad with ID {dataID} !")   
+        else:
+            logger.warning(
+                f"Couldn't reach item's page, no link extracted for item with id {dataID}"
+            )
+        return adData
