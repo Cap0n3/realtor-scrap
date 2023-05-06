@@ -76,7 +76,7 @@ class ImmoCH(FlatHunterBase):
             except KeyError:
                 adDict["data-id"] = None
                 dataID = 0
-                logger.warning(f"No data-id for item (KeyError) : {ad}")
+                logger.warning(f"No data-id for item (KeyError). Dumping content :\n {ad}")
             else:
                 adDict["data-id"] = int(dataID)
                 logger.debug(f"Extracting item with data-id {dataID}")
@@ -88,7 +88,7 @@ class ImmoCH(FlatHunterBase):
             rentStringBS4 = FlatHunterBase.getElementsByClass(adContent, get="first", _class="title")
             adDict["rent"] = self._formatRentStringHelper(dataID, rentStringBS4)
             # == Extract ad address == #
-            addressStringBS4 = self._getAddressHelper(dataID, adContent)
+            adDict["address"] = self._getAddressHelper(dataID, adContent)
             # == Extract ad Rooms == #
             roomsStringBS4 = FlatHunterBase.getElementsByClass(adCaracteristics, get="first", _class="icon-plan")
             adDict["rooms"] = self._formatRoomsStringHelper(dataID, roomsStringBS4["title"] if roomsStringBS4 else None)
@@ -183,9 +183,9 @@ class ImmoCH(FlatHunterBase):
         try:
             imgBS4List = FlatHunterBase.getElementsByClass(adSoup, get="all", _class="im__banner__slider")
         except KeyError:
-            logger.warning(
-                f"Couldn't extract images from item ID {dataID}, will return empty dictionnary !"
-            )
+            logger.warning(f"Couldn't extract images from item ID {dataID}, will return empty dictionnary !")
+            logger.debug(f"Couldn't extract images from item ID {dataID} ! \nSoup dump : {adSoup}")
+
         else:
             if imgBS4List != None:
                 imagesBS4List = imgBS4List[0].find_all("img")
@@ -299,12 +299,28 @@ class ImmoCH(FlatHunterBase):
         return size if size != None else 0
     
     def _getAdLinkHelper(self, dataID, adContainerSoup):
+        """
+        getAds's helper function to extract ad's link.
+
+        Params
+        ------
+        dataID : int
+            Ad's data-id.
+        adContainerSoup : bs4.element.Tag
+            Ad's container soup.
+
+        Returns
+        -------
+        adURL : str
+            Ad's URL.
+        """
         adURL = None
 
         try:
             link = adContainerSoup.find(id=f"link-result-item-{dataID}")
         except KeyError:
-            logger.warning(f"No link for item with data-id {dataID} : KeyError")
+            logger.warning(f"No link for item with data-id {dataID} : KeyError !")
+            logger.debug(f"No link for item with data-id {dataID} : KeyError ! \nData dump : {adContainerSoup}")
         else:
             if link != None:
                 adURL = self.URLs["website"] + link["href"]
@@ -312,7 +328,73 @@ class ImmoCH(FlatHunterBase):
         
         return adURL
 
+    def _getContactInfosHelper(self, dataID, adSoup):
+        """
+        getAds's helper function to extract ad's contact infos.
+
+        Params
+        ------
+        dataID : int
+            Ad's data-id.
+        adSoup : bs4.element.Tag
+            Ad's soup.
+
+        Returns
+        -------
+        contactInfos : dict
+            Ad's contact infos.
+        """
+        companyContactInfos = {}
+
+        try:
+            contactInfosSoup = FlatHunterBase.getElementsByClass(adSoup, get="first", _class="im__postDetails__contact")
+        except KeyError:
+            logger.warning(f"No company contact infos for item with data-id {dataID} : KeyError !")
+            logger.debug(f"No company contact infos for item with data-id {dataID} : KeyError ! \nData dump : {adSoup}")
+        else:
+            if contactInfosSoup != None:
+                addressBS4 = contactInfosSoup.find("address")
+                if addressBS4 != None:
+                    # Extract contact infos
+                    contentList = addressBS4.contents
+                    addressData = []
+                    # Get company name
+                    for el in contentList:
+                        if el.name == "strong":
+                            companyContactInfos["company-name"] = el.get_text().strip()
+                            
+                    # Get company address
+                    for el in contentList:
+                        if el.name == "strong":
+                            pass
+                        else:
+                            stripElement = el.get_text().strip()
+                            if stripElement != "":
+                                addressData.append(stripElement)
+                            
+                    # Add company infos to contact infos dict
+                    companyContactInfos["company-address"] = addressData         
+            else:
+                logger.warning(f"No company contact infos for item with data-id {dataID} : contactInfosSoup is None !")
+        
+        return companyContactInfos
+    
     def _getChargesInTable(self, dataID, infoTableList):
+        """
+        getAds's helper function to extract charges from ad's table.
+
+        Params
+        ------
+        dataID : int
+            Ad's data-id.
+        infoTableList : list
+            Ad's table.
+
+        Returns
+        -------
+        charges : int
+            Ad's charges.
+        """
         isChargesIndicated = False
         charges = 0
         for row in infoTableList:
@@ -320,7 +402,8 @@ class ImmoCH(FlatHunterBase):
                 try:
                     charges = int(re.search(r"\d+", row).group())
                 except:
-                    logger.warning(f"Couldn't extract string charges in table from ad with ID {dataID}")
+                    logger.warning(f"Couldn't extract string charges in table from ad with ID {dataID} !")
+                    logger.debug(f"Couldn't extract string charges in table from ad with ID {dataID} ! \nTable dump : {infoTableList}")
                 else:
                     isChargesIndicated = True
                     logger.debug(f"Extracted charges from table for ad with ID {dataID}. Charges : {charges} CHF")
@@ -332,15 +415,32 @@ class ImmoCH(FlatHunterBase):
             return charges
     
     def _getAddressHelper(self, dataID, adContentSoup):
+        """
+        getAds's helper function to extract address from ad.
+
+        Params
+        ------
+        dataID : int
+            Ad's data-id.
+        adContentSoup : bs4.element.Tag
+            Ad's content soup.
+
+        Returns
+        -------
+        address : str
+            Ad's address or empty string.
+        """
         address = None
         try:
-            address = adContentSoup.find("address").get_text()
+            # Last <p> tag contains address
+            address = adContentSoup.find_all("p")[-1].get_text()
         except:
-            logger.warning(f"Couldn't extract address from ad with ID {dataID}")
+            logger.warning(f"Couldn't extract address from ad with ID {dataID} !")
+            logger.debug(f"Couldn't extract address from ad with ID {dataID} ! \nDumping ad content : {adContentSoup}")
         else:
             logger.debug(f"Extracted address from ad with ID {dataID} : {address}")
         
-        return address
+        return address if address != None else ""
 
     def followAdLinkAndExtractData(self, dataID, adLink):
         """
@@ -365,6 +465,8 @@ class ImmoCH(FlatHunterBase):
                 )
             # Get ad's page soup
             adPageSoup = self.getPageSoup(adLink)
+            # == Get Contact informations == #
+            adData["company-contact-infos"] = self._getContactInfosHelper(dataID, adPageSoup)
             # == Get images == #
             images = self._getImagesHelper(dataID, adPageSoup)
             adData["images"] = images
